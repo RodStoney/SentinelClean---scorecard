@@ -401,7 +401,12 @@ let state = {
   showHistory: false,
   showResetConfirm: false,
   savedFlash: false,
-  copyFlash: false
+  copyFlash: false,
+  mondayFlash: false,
+  mondayError: null,
+  mondayLoading: false,
+  photos: {},        // { itemId: [{dataUrl, thumb, name}] }
+  auditPhotos: []    // overall audit photos [{dataUrl, thumb, name}]
 };
 
 function getInd(){return industries.find(i=>i.id===state.tab)}
@@ -550,6 +555,8 @@ function handleReset(){
   state.auditor="";state.myco="";
   state.date=new Date().toISOString().split("T")[0];
   state.cats={};state.showResetConfirm=false;
+  state.photos={};state.auditPhotos=[];
+  state.mondayError=null;state.mondayFlash=false;
   render();window.scrollTo({top:0,behavior:"smooth"});
 }
 
@@ -568,7 +575,208 @@ async function doCopyHtml(){
 }
 
 
-// ── RENDER ──
+// ── MONDAY CONFIG ──
+const MONDAY_API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJ0aWQiOjYyOTk3Nzk0NSwiYWFpIjoxMSwidWlkIjo3NzQyMDQ5OCwiaWFkIjoiMjAyNi0wMy0wNlQxODo0Njo1Mi4wMDBaIiwicGVyIjoibWU6d3JpdGUiLCJhY3RpZCI6MzAwNTQ3MTEsInJnbiI6InVzZTEifQ.BXG0ffGKi3-96zpBAf_wt1GNlEVE3wHRiffVI3u7hcc";
+const MONDAY_BOARD_ID = "18402975554";
+
+// Industry id → Monday group title (must match groups you created in Monday)
+const INDUSTRY_GROUPS = {
+  bank:    "Banks & Credit Unions",
+  dealer:  "Auto Dealerships",
+  medical: "Medical Offices",
+  hotel:   "Hotels & Hospitality",
+  office:  "Corporate Offices",
+  school:  "Schools & Universities",
+  hoa:     "Condo & HOA",
+  retail:  "Retail & Shopping"
+};
+
+// ── PHOTO HELPERS ──
+function resizeToThumb(dataUrl, maxPx=600){
+  return new Promise(resolve=>{
+    const img=new Image();
+    img.onload=()=>{
+      const scale=Math.min(1, maxPx/Math.max(img.width,img.height));
+      const c=document.createElement("canvas");
+      c.width=Math.round(img.width*scale);
+      c.height=Math.round(img.height*scale);
+      c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+      resolve(c.toDataURL("image/jpeg",0.82));
+    };
+    img.src=dataUrl;
+  });
+}
+
+function triggerCamera(itemId){
+  const inp=document.createElement("input");
+  inp.type="file"; inp.accept="image/*"; inp.capture="environment";
+  inp.multiple=true;
+  inp.onchange=async()=>{
+    for(const file of inp.files){
+      const reader=new FileReader();
+      reader.onload=async e=>{
+        const thumb=await resizeToThumb(e.target.result);
+        const bucket = itemId==="__audit__" ? "auditPhotos" : "photos";
+        if(bucket==="auditPhotos"){
+          state.auditPhotos=[...state.auditPhotos,{dataUrl:thumb,name:file.name,id:Date.now()}];
+        } else {
+          if(!state.photos[itemId]) state.photos[itemId]=[];
+          state.photos[itemId]=[...state.photos[itemId],{dataUrl:thumb,name:file.name,id:Date.now()}];
+        }
+        render();
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+  inp.click();
+}
+
+function removePhoto(bucket, id){
+  if(bucket==="__audit__"){
+    state.auditPhotos=state.auditPhotos.filter(p=>p.id!==id);
+  } else {
+    if(state.photos[bucket]) state.photos[bucket]=state.photos[bucket].filter(p=>p.id!==id);
+  }
+  render();
+}
+
+// ── MONDAY API ──
+async function mondayQuery(query, variables={}){
+  const res=await fetch("https://api.monday.com/v2",{
+    method:"POST",
+    headers:{"Content-Type":"application/json","Authorization":MONDAY_API_KEY,"API-Version":"2024-01"},
+    body:JSON.stringify({query, variables})
+  });
+  const json=await res.json();
+  if(json.errors) throw new Error(json.errors[0].message);
+  return json.data;
+}
+
+async function mondayGetGroups(){
+  const data=await mondayQuery(`query($bid:ID!){boards(ids:[$bid]){groups{id title}}}`,{bid:MONDAY_BOARD_ID});
+  return data.boards[0].groups;
+}
+
+async function mondayGetItems(groupId){
+  const data=await mondayQuery(
+    `query($bid:ID!,$gid:String!){boards(ids:[$bid]){groups(ids:[$gid]){items_page(limit:100){items{id name}}}}}`,
+    {bid:MONDAY_BOARD_ID, gid:groupId}
+  );
+  return data.boards[0].groups[0].items_page.items;
+}
+
+async function mondayCreateItem(groupId, itemName, columnValues){
+  const data=await mondayQuery(
+    `mutation($bid:ID!,$gid:String!,$name:String!,$cols:JSON!){create_item(board_id:$bid,group_id:$gid,item_name:$name,column_values:$cols){id}}`,
+    {bid:MONDAY_BOARD_ID, gid:groupId, name:itemName, cols:JSON.stringify(columnValues)}
+  );
+  return data.create_item.id;
+}
+
+async function mondayUploadFile(itemId, columnId, dataUrl, filename){
+  const base64=dataUrl.split(",")[1];
+  const mime=dataUrl.split(";")[0].split(":")[1];
+  const byteStr=atob(base64);
+  const arr=new Uint8Array(byteStr.length);
+  for(let i=0;i<byteStr.length;i++) arr[i]=byteStr.charCodeAt(i);
+  const blob=new Blob([arr],{type:mime});
+  const form=new FormData();
+  form.append("query",`mutation($file:File!,$iid:ID!,$col:String!){add_file_to_column(item_id:$iid,column_id:$col,file:$file){id}}`);
+  form.append("variables[iid]",itemId);
+  form.append("variables[col]",columnId);
+  form.append("map",'{"file":["variables.file"]}');
+  form.append("file",blob,filename);
+  const res=await fetch("https://api.monday.com/v2/file",{
+    method:"POST",
+    headers:{"Authorization":MONDAY_API_KEY,"API-Version":"2024-01"},
+    body:form
+  });
+  return res.json();
+}
+
+async function submitToMonday(){
+  if(!state.client){
+    state.mondayError="Please enter a client name before submitting.";
+    render(); return;
+  }
+  state.mondayLoading=true; state.mondayError=null; render();
+
+  try{
+    const ind=getInd();
+    const {scored,passed,flagged,failed,hiFails,pct}=calcStats();
+    const groupTitle=INDUSTRY_GROUPS[state.tab];
+
+    // 1. Get all groups, find matching one
+    const groups=await mondayGetGroups();
+    let group=groups.find(g=>g.title.toLowerCase()===groupTitle.toLowerCase());
+    if(!group) throw new Error(`Group "${groupTitle}" not found in Monday board. Please create it.`);
+
+    // 2. Check if client already exists in this group
+    const existingItems=await mondayGetItems(group.id);
+    const existing=existingItems.find(i=>i.name.toLowerCase()===state.client.toLowerCase());
+
+    // 3. Build column values
+    // Build full report text
+    let reportLines=[];
+    ind.categories.forEach(cat=>{
+      const ci=cat.items.filter(i=>getSc(i.id));
+      if(!ci.length) return;
+      reportLines.push(`\n## ${cat.name}`);
+      ci.forEach(item=>{
+        const s=getSc(item.id);
+        const label=s==="pass"?"PASS":s==="flag"?"FLAG":"FAIL";
+        reportLines.push(`[${label}] [${item.risk}] ${item.label}`);
+      });
+    });
+    const fullReport=reportLines.join("\n");
+    const hfText=hiFails.length>0?hiFails.map(i=>i.label).join("\n"):"None";
+
+    const colVals={
+      "location__1": state.loc||"",
+      "text__1": state.auditor||"",
+      "text0__1": state.myco||"",
+      "date__1": {date: state.date},
+      "text1__1": ind.label,
+      "numbers__1": pct!==null?pct:0,
+      "numbers0__1": passed,
+      "numbers1__1": flagged,
+      "numbers2__1": failed,
+      "long_text__1": hfText,
+      "long_text0__1": fullReport.slice(0,2000)
+    };
+
+    let itemId;
+    if(existing){
+      // Client exists — create a new sub-item or just use the existing item id for file upload
+      // We'll create a NEW item with date appended to differentiate audits
+      itemId=await mondayCreateItem(group.id, `${state.client} — ${state.date}`, colVals);
+    } else {
+      // New client — create item with just the client name
+      itemId=await mondayCreateItem(group.id, state.client, colVals);
+    }
+
+    // 4. Upload photos (audit-level + item-level combined)
+    const allPhotos=[
+      ...state.auditPhotos,
+      ...Object.values(state.photos).flat()
+    ];
+    for(let i=0;i<allPhotos.length;i++){
+      const p=allPhotos[i];
+      await mondayUploadFile(itemId,"files__1",p.dataUrl,p.name||`photo_${i+1}.jpg`);
+    }
+
+    state.mondayLoading=false;
+    state.mondayFlash=true; render();
+    setTimeout(()=>{state.mondayFlash=false;render();},3000);
+
+  }catch(err){
+    state.mondayLoading=false;
+    state.mondayError=err.message||"Monday.com submission failed.";
+    render();
+  }
+}
+
+
 function render(){
   const ind=getInd();
   const {all,scored,passed,flagged,failed,hiFails,pct}=calcStats();
@@ -582,14 +790,33 @@ function render(){
   const btnSave=`background:${state.savedFlash?"#166534":"#f0fdf4"};color:${state.savedFlash?"#fff":"#166534"};border:1px solid #86efac;border-radius:7px;padding:10px 18px;font-size:12px;cursor:pointer;font-family:monospace;font-weight:700;transition:all 0.2s;`;
   const btnReset=`background:#fff5f5;color:#991b1b;border:1px solid #fecaca;border-radius:7px;padding:10px 18px;font-size:12px;cursor:pointer;font-family:monospace;font-weight:700;`;
 
+  const btnMonday=`background:${state.mondayFlash?"#166534":state.mondayLoading?"#6b7280":"#f04"}; color:#fff;border:none;border-radius:7px;padding:10px 18px;font-size:12px;cursor:pointer;font-family:monospace;font-weight:700;transition:all 0.2s;`;
+  const mondayStatusBar = state.mondayError ? `<div style="width:100%;background:#fff8f8;border:1px solid #fecaca;border-radius:6px;padding:8px 14px;font-size:12px;color:#991b1b;font-family:monospace;">⚠ ${state.mondayError}</div>` : "";
+
+  // Audit-level photos strip
+  const auditPhotoStrip = `
+    <div style="margin-bottom:16px;">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <button onclick="triggerCamera('__audit__')" style="background:#f0f4ff;color:#1e40af;border:1px solid #bfdbfe;border-radius:7px;padding:8px 14px;font-size:12px;font-family:monospace;font-weight:700;cursor:pointer;">📷 Add Audit Photos</button>
+        ${state.auditPhotos.map(p=>`
+          <div style="position:relative;display:inline-block;">
+            <img src="${p.dataUrl}" style="width:56px;height:56px;object-fit:cover;border-radius:6px;border:1px solid #e5e7eb;"/>
+            <button onclick="removePhoto('__audit__',${p.id})" style="position:absolute;top:-5px;right:-5px;background:#ef4444;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:11px;cursor:pointer;line-height:1;padding:0;">✕</button>
+          </div>`).join("")}
+      </div>
+    </div>`;
+
   const actionBar=`
-    <div class="no-print" style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;align-items:center;">
+    <div class="no-print" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;">
       <button style="${btnPrimary}" onclick="doPrint()">🖨 Print / PDF</button>
       <button style="${btnAccent}" onclick="doCopyHtml()">${state.copyFlash?"✓ Copied! Paste into email":"✉ Copy for Email"}</button>
       <button style="${btnSave}" onclick="handleSave()">${state.savedFlash?"✓ Saved!":"💾 Save Audit"}</button>
+      <button style="${btnMonday}" onclick="submitToMonday()" ${state.mondayLoading?"disabled":""}>${state.mondayFlash?"✓ Submitted to Monday!":state.mondayLoading?"⏳ Submitting…":"📋 Submit to Monday"}</button>
       <button style="${btnReset}" onclick="state.showResetConfirm=true;render()">↺ New Audit</button>
       ${scored.length>0?`<div style="margin-left:auto;display:flex;gap:14px;font-size:12px;font-family:monospace;"><span style="color:#166534;">✓ ${passed}</span><span style="color:#92400e;">⚑ ${flagged}</span><span style="color:#991b1b;">✗ ${failed}</span></div>`:""}
-    </div>`;
+    </div>
+    ${mondayStatusBar}
+    ${auditPhotoStrip}`;
 
   const resetConfirm=state.showResetConfirm?`
     <div class="no-print" style="background:#fff8f8;border:1px solid #fecaca;border-radius:8px;padding:16px 18px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
@@ -683,13 +910,25 @@ function render(){
       const btns=Object.entries(scoreCfg).map(([k2,{label,color,bg,border}])=>
         `<button onclick="setSc('${item.id}','${k2}')" style="background:${cur===k2?bg:"#f9fafb"};color:${cur===k2?color:"#9ca3af"};border:${cur===k2?`1px solid ${border}`:"1px solid #e5e7eb"};border-radius:5px;padding:5px 9px;font-size:10px;cursor:pointer;font-family:monospace;font-weight:700;transition:all 0.1s;">${label}</button>`
       ).join("");
-      return `<div style="padding:10px 18px;border-bottom:${idx<items.length-1?"1px solid #f9fafb":"none"};display:flex;align-items:center;gap:10px;background:${rowBg};">
-        <div style="width:3px;align-self:stretch;border-radius:2px;flex-shrink:0;background:${cfg?cfg.color:"#e5e7eb"};opacity:${cfg?1:0.3};"></div>
-        <div style="flex:1;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-          <span style="font-size:13px;color:#374151;line-height:1.5;">${item.label}</span>
-          <span style="font-size:9px;font-weight:700;letter-spacing:0.08em;background:${risk.bg};color:${risk.text};border:1px solid ${risk.border};padding:1px 6px;border-radius:20px;font-family:monospace;">${item.risk}</span>
+      const itemPhotos=(state.photos[item.id]||[]);
+      const photoThumbsHtml=itemPhotos.map(p=>`
+        <div style="position:relative;display:inline-block;margin-right:4px;">
+          <img src="${p.dataUrl}" style="width:40px;height:40px;object-fit:cover;border-radius:5px;border:1px solid #e5e7eb;vertical-align:middle;"/>
+          <button onclick="removePhoto('${item.id}',${p.id});event.stopPropagation();" style="position:absolute;top:-4px;right:-4px;background:#ef4444;color:#fff;border:none;border-radius:50%;width:16px;height:16px;font-size:9px;cursor:pointer;line-height:1;padding:0;">✕</button>
+        </div>`).join("");
+      return `<div style="padding:10px 18px;border-bottom:${idx<items.length-1?"1px solid #f9fafb":"none"};background:${rowBg};">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:3px;align-self:stretch;border-radius:2px;flex-shrink:0;background:${cfg?cfg.color:"#e5e7eb"};opacity:${cfg?1:0.3};"></div>
+          <div style="flex:1;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span style="font-size:13px;color:#374151;line-height:1.5;">${item.label}</span>
+            <span style="font-size:9px;font-weight:700;letter-spacing:0.08em;background:${risk.bg};color:${risk.text};border:1px solid ${risk.border};padding:1px 6px;border-radius:20px;font-family:monospace;">${item.risk}</span>
+          </div>
+          <div style="display:flex;gap:4px;flex-shrink:0;align-items:center;">
+            ${btns}
+            <button onclick="triggerCamera('${item.id}');event.stopPropagation();" title="Add photo" style="background:#f0f4ff;color:#1e40af;border:1px solid #bfdbfe;border-radius:5px;padding:5px 8px;font-size:12px;cursor:pointer;line-height:1;">📷${itemPhotos.length>0?` ${itemPhotos.length}`:""}</button>
+          </div>
         </div>
-        <div style="display:flex;gap:4px;flex-shrink:0;">${btns}</div>
+        ${itemPhotos.length>0?`<div style="padding:6px 0 2px 14px;">${photoThumbsHtml}</div>`:""}
       </div>`;
     }).join(""):"";
 
@@ -754,6 +993,7 @@ function render(){
         <button style="${btnPrimary}" onclick="doPrint()">🖨 Print / PDF</button>
         <button style="${btnAccent}" onclick="doCopyHtml()">${state.copyFlash?"✓ Copied! Paste into email":"✉ Copy for Email"}</button>
         <button style="${btnSave}" onclick="handleSave()">${state.savedFlash?"✓ Saved!":"💾 Save Audit"}</button>
+        <button style="${btnMonday}" onclick="submitToMonday()" ${state.mondayLoading?"disabled":""}>${state.mondayFlash?"✓ Submitted!":state.mondayLoading?"⏳ Submitting…":"📋 Submit to Monday"}</button>
         <button style="${btnReset}" onclick="state.showResetConfirm=true;render()">↺ New Audit</button>
       </div>
     </div>`:"";
