@@ -1,1146 +1,828 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SentinelClean — Facility Audit Scorecard</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="theme-color" content="#f8f7f4"/>
+<link rel="manifest" href="manifest.json"/>
+<title>SentinelClean™ Facility Audit Scorecard</title>
 <style>
-  :root {
-    --bg: #0f1117;
-    --surface: #181c26;
-    --surface2: #1e2330;
-    --border: #2a2f3d;
-    --accent: #00c2a8;
-    --accent2: #0096ff;
-    --warn: #f59e0b;
-    --danger: #ef4444;
-    --pass: #22c55e;
-    --text: #e8eaf0;
-    --text2: #8892a4;
-    --text3: #545e6e;
-    --font: 'DM Sans', sans-serif;
-    --mono: 'DM Mono', monospace;
-    --radius: 10px;
-    --radius-lg: 16px;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: var(--font);
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    font-size: 14px;
-    line-height: 1.5;
-  }
-
-  /* PASSWORD SCREEN */
-  #password-screen {
-    position: fixed; inset: 0;
-    background: var(--bg);
-    display: flex; align-items: center; justify-content: center;
-    z-index: 1000;
-    flex-direction: column;
-    gap: 24px;
-  }
-  .pw-box {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 40px;
-    width: 360px;
-    text-align: center;
-  }
-  .pw-logo {
-    font-size: 22px;
-    font-weight: 700;
-    letter-spacing: -0.5px;
-    margin-bottom: 6px;
-  }
-  .pw-logo span { color: var(--accent); }
-  .pw-sub { color: var(--text2); font-size: 13px; margin-bottom: 28px; }
-  .pw-box input {
-    width: 100%;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 12px 14px;
-    color: var(--text);
-    font-family: var(--font);
-    font-size: 14px;
-    outline: none;
-    margin-bottom: 12px;
-    transition: border-color 0.2s;
-  }
-  .pw-box input:focus { border-color: var(--accent); }
-  .pw-box button {
-    width: 100%;
-    background: var(--accent);
-    border: none;
-    border-radius: var(--radius);
-    padding: 12px;
-    color: #000;
-    font-family: var(--font);
-    font-weight: 600;
-    font-size: 14px;
-    cursor: pointer;
-    transition: opacity 0.2s;
-  }
-  .pw-box button:hover { opacity: 0.85; }
-  .pw-error { color: var(--danger); font-size: 13px; margin-top: 8px; display: none; }
-
-  /* MAIN APP */
-  #app { display: none; }
-  
-  /* HEADER */
-  header {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 0 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 56px;
-    position: sticky; top: 0; z-index: 100;
-  }
-  .logo {
-    font-size: 16px;
-    font-weight: 700;
-    letter-spacing: -0.3px;
-  }
-  .logo span { color: var(--accent); }
-  .logo small {
-    font-size: 10px;
-    font-weight: 400;
-    color: var(--text2);
-    margin-left: 8px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    font-family: var(--mono);
-  }
-  .header-actions { display: flex; gap: 8px; }
-
-  /* LAYOUT */
-  .container { max-width: 960px; margin: 0 auto; padding: 24px 20px; }
-
-  /* TABS */
-  .industry-tabs {
-    display: flex;
-    gap: 6px;
-    overflow-x: auto;
-    padding-bottom: 4px;
-    margin-bottom: 24px;
-    scrollbar-width: none;
-  }
-  .industry-tabs::-webkit-scrollbar { display: none; }
-  .tab-btn {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 8px 14px;
-    color: var(--text2);
-    font-family: var(--font);
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: all 0.15s;
-    display: flex; align-items: center; gap: 6px;
-  }
-  .tab-btn:hover { border-color: var(--accent); color: var(--text); }
-  .tab-btn.active {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #000;
-    font-weight: 600;
-  }
-
-  /* META FIELDS */
-  .meta-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-    margin-bottom: 24px;
-  }
-  @media (max-width: 600px) { .meta-grid { grid-template-columns: 1fr; } }
-  .field label {
-    display: block;
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    color: var(--text3);
-    margin-bottom: 6px;
-    font-family: var(--mono);
-  }
-  .field input, .field select {
-    width: 100%;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 10px 12px;
-    color: var(--text);
-    font-family: var(--font);
-    font-size: 13px;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-  .field input:focus, .field select:focus { border-color: var(--accent); }
-  .field select option { background: var(--surface2); }
-
-  /* SCORE SUMMARY */
-  .score-bar {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 20px 24px;
-    margin-bottom: 24px;
-    display: flex;
-    align-items: center;
-    gap: 24px;
-    flex-wrap: wrap;
-  }
-  .score-pct {
-    font-size: 42px;
-    font-weight: 700;
-    letter-spacing: -2px;
-    line-height: 1;
-    font-family: var(--mono);
-  }
-  .score-pct.pass { color: var(--pass); }
-  .score-pct.warn { color: var(--warn); }
-  .score-pct.fail { color: var(--danger); }
-  .score-details { flex: 1; }
-  .score-label { font-size: 13px; color: var(--text2); margin-bottom: 8px; }
-  .progress-track {
-    height: 6px;
-    background: var(--surface2);
-    border-radius: 3px;
-    overflow: hidden;
-    margin-bottom: 12px;
-  }
-  .progress-fill {
-    height: 100%;
-    border-radius: 3px;
-    transition: width 0.3s ease;
-    background: var(--pass);
-  }
-  .progress-fill.warn { background: var(--warn); }
-  .progress-fill.fail { background: var(--danger); }
-  .score-pills { display: flex; gap: 8px; flex-wrap: wrap; }
-  .pill {
-    font-size: 11px;
-    font-weight: 600;
-    font-family: var(--mono);
-    padding: 3px 10px;
-    border-radius: 20px;
-    border: 1px solid;
-  }
-  .pill.pass { color: var(--pass); border-color: #22c55e40; background: #22c55e12; }
-  .pill.flag { color: var(--warn); border-color: #f59e0b40; background: #f59e0b12; }
-  .pill.fail { color: var(--danger); border-color: #ef444440; background: #ef444412; }
-  .pill.na { color: var(--text3); border-color: var(--border); background: transparent; }
-
-  /* HIGH RISK ALERT */
-  .risk-alert {
-    background: #ef444412;
-    border: 1px solid #ef444440;
-    border-radius: var(--radius);
-    padding: 12px 16px;
-    margin-bottom: 20px;
-    font-size: 13px;
-    color: #fca5a5;
-    display: none;
-  }
-  .risk-alert strong { color: var(--danger); }
-
-  /* CHECKLIST */
-  .category-block {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    margin-bottom: 16px;
-    overflow: hidden;
-  }
-  .cat-header {
-    padding: 14px 20px;
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: var(--text2);
-    font-family: var(--mono);
-    background: var(--surface2);
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  .cat-score-mini { font-size: 12px; color: var(--text3); }
-  .checklist-item {
-    display: flex;
-    align-items: center;
-    padding: 13px 20px;
-    border-bottom: 1px solid var(--border);
-    gap: 16px;
-    transition: background 0.1s;
-  }
-  .checklist-item:last-child { border-bottom: none; }
-  .checklist-item:hover { background: var(--surface2); }
-  .item-label {
-    flex: 1;
-    font-size: 13px;
-    color: var(--text);
-    line-height: 1.4;
-  }
-  .item-risk {
-    font-size: 10px;
-    font-weight: 600;
-    font-family: var(--mono);
-    padding: 2px 7px;
-    border-radius: 4px;
-    flex-shrink: 0;
-  }
-  .item-risk.HIGH { background: #ef444420; color: #fca5a5; border: 1px solid #ef444440; }
-  .item-risk.MED { background: #f59e0b20; color: #fcd34d; border: 1px solid #f59e0b40; }
-  .item-risk.LOW { background: #3b82f620; color: #93c5fd; border: 1px solid #3b82f640; }
-  .score-btns {
-    display: flex;
-    gap: 4px;
-    flex-shrink: 0;
-  }
-  .score-btn {
-    padding: 5px 10px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    background: transparent;
-    color: var(--text3);
-    font-family: var(--mono);
-    font-size: 11px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.15s;
-    white-space: nowrap;
-  }
-  .score-btn:hover { border-color: var(--text2); color: var(--text); }
-  .score-btn.active-pass { background: #22c55e20; border-color: var(--pass); color: var(--pass); }
-  .score-btn.active-flag { background: #f59e0b20; border-color: var(--warn); color: var(--warn); }
-  .score-btn.active-fail { background: #ef444420; border-color: var(--danger); color: var(--danger); }
-  .score-btn.active-na { background: var(--surface2); border-color: var(--text3); color: var(--text2); }
-
-  /* BUTTONS */
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 9px 16px;
-    border-radius: var(--radius);
-    border: 1px solid transparent;
-    font-family: var(--font);
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.15s;
-    white-space: nowrap;
-  }
-  .btn-primary { background: var(--accent); color: #000; border-color: var(--accent); }
-  .btn-primary:hover { opacity: 0.85; }
-  .btn-secondary { background: transparent; color: var(--text2); border-color: var(--border); }
-  .btn-secondary:hover { border-color: var(--text2); color: var(--text); }
-  .btn-danger { background: transparent; color: var(--danger); border-color: #ef444440; }
-  .btn-danger:hover { background: #ef444412; }
-  .btn-sm { padding: 6px 12px; font-size: 12px; }
-
-  /* ACTIONS ROW */
-  .actions-row {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-bottom: 28px;
-    margin-top: 8px;
-  }
-
-  /* HISTORY */
-  .section-title {
-    font-size: 12px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: var(--text3);
-    font-family: var(--mono);
-    margin-bottom: 12px;
-  }
-  .history-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 32px; }
-  .history-item {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 14px 16px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    cursor: pointer;
-    transition: border-color 0.15s;
-  }
-  .history-item:hover { border-color: var(--accent); }
-  .history-meta { flex: 1; }
-  .history-name { font-size: 13px; font-weight: 500; margin-bottom: 3px; }
-  .history-sub { font-size: 11px; color: var(--text3); font-family: var(--mono); }
-  .history-score { font-family: var(--mono); font-size: 16px; font-weight: 600; }
-  .history-del {
-    background: none; border: none;
-    color: var(--text3); cursor: pointer;
-    padding: 4px 8px; border-radius: 6px;
-    font-size: 16px;
-    transition: color 0.15s;
-  }
-  .history-del:hover { color: var(--danger); }
-  .empty-state {
-    text-align: center;
-    padding: 32px;
-    color: var(--text3);
-    font-size: 13px;
-    background: var(--surface);
-    border: 1px dashed var(--border);
-    border-radius: var(--radius);
-  }
-
-  /* TOAST */
-  .toast {
-    position: fixed;
-    bottom: 24px; right: 24px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 12px 20px;
-    font-size: 13px;
-    color: var(--text);
-    z-index: 9999;
-    opacity: 0;
-    transform: translateY(8px);
-    transition: all 0.2s;
-    pointer-events: none;
-  }
-  .toast.show { opacity: 1; transform: translateY(0); }
-
-  /* PRINT */
-  @media print {
-    #password-screen, header, .industry-tabs, .actions-row, .history-list, .section-title,
-    .score-btns, .history-del, .toast, .tab-btn { display: none !important; }
-    body { background: #fff; color: #000; }
-    .container { padding: 0; max-width: 100%; }
-    .score-bar, .category-block { border: 1px solid #ddd; background: #fff; }
-    .cat-header { background: #f5f5f5; }
-    .checklist-item { border-bottom: 1px solid #eee; }
-    .item-label { color: #000; }
-    .score-pct { color: #000 !important; }
-    .risk-alert { display: block !important; }
-  }
-
-  /* SCROLLBAR */
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Georgia,'Times New Roman',serif;background:#f8f7f4;color:#1a1a1a;min-height:100vh}
+button{cursor:pointer;font-family:inherit}
+button:hover{opacity:0.88}
+input{font-family:inherit}
+select{font-family:inherit}
+.no-print{}
+@media print{
+  .no-print{display:none!important}
+  body{background:#fff!important}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:#f1f1f1}
+::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:3px}
 </style>
 </head>
 <body>
-
-<!-- PASSWORD SCREEN -->
-<div id="password-screen">
-  <div class="pw-box">
-    <div class="pw-logo">Sentinel<span>Clean</span></div>
-    <div class="pw-sub">Facility Audit Scorecard — Staff Access</div>
-    <input type="password" id="pw-input" placeholder="Enter access password" />
-    <button onclick="checkPassword()">Unlock →</button>
-    <div class="pw-error" id="pw-error">Incorrect password. Try again.</div>
-  </div>
-</div>
-
-<!-- MAIN APP -->
-<div id="app">
-  <header>
-    <div class="logo">Sentinel<span>Clean</span> <small>Audit Scorecard</small></div>
-    <div class="header-actions">
-      <button class="btn btn-secondary btn-sm" onclick="resetAudit()">↺ New Audit</button>
-    </div>
-  </header>
-
-  <div class="container">
-    <!-- Industry Tabs -->
-    <div class="industry-tabs" id="industry-tabs"></div>
-
-    <!-- Meta Fields -->
-    <div class="meta-grid">
-      <div class="field">
-        <label>Client / Facility Name</label>
-        <input type="text" id="f-client" placeholder="e.g. Sarasota Law Group" />
-      </div>
-      <div class="field">
-        <label>Location / Address</label>
-        <input type="text" id="f-location" placeholder="e.g. 123 Main St" />
-      </div>
-      <div class="field">
-        <label>Auditor Name</label>
-        <input type="text" id="f-auditor" placeholder="Your name" />
-      </div>
-    </div>
-
-    <!-- Score Summary -->
-    <div class="score-bar">
-      <div class="score-pct" id="score-pct">—%</div>
-      <div class="score-details">
-        <div class="score-label" id="score-label">No items scored yet</div>
-        <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
-        <div class="score-pills">
-          <div class="pill pass" id="pill-pass">0 Pass</div>
-          <div class="pill flag" id="pill-flag">0 Flag</div>
-          <div class="pill fail" id="pill-fail">0 Fail</div>
-          <div class="pill na" id="pill-na">0 N/A</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Risk Alert -->
-    <div class="risk-alert" id="risk-alert"></div>
-
-    <!-- Actions -->
-    <div class="actions-row">
-      <button class="btn btn-primary" onclick="saveAudit()">💾 Save Audit</button>
-      <button class="btn btn-secondary" onclick="window.print()">🖨 Print Report</button>
-      <button class="btn btn-secondary" onclick="copyEmailReport()">📋 Copy for Email</button>
-    </div>
-
-    <!-- Checklist -->
-    <div id="checklist"></div>
-
-    <!-- History -->
-    <div class="section-title" style="margin-top:32px">Saved Audits</div>
-    <div class="history-list" id="history-list"></div>
-  </div>
-</div>
-
-<!-- Toast -->
-<div class="toast" id="toast"></div>
-
+<div id="app"></div>
 <script>
-// ─── PASSWORD ───────────────────────────────────────────────────────────────
-const APP_PASSWORD = 'sentinel2024';
+const LOGO_SRC = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NCA0NCIgd2lkdGg9IjQ0IiBoZWlnaHQ9IjQ0Ij4KICA8cmVjdCB3aWR0aD0iNDQiIGhlaWdodD0iNDQiIHJ4PSI4IiBmaWxsPSIjMWEzYTJhIi8+CiAgPHBhdGggZD0iTTIyIDggTDM0IDE0IEwzNCAyNCBDMzQgMzAgMjggMzYgMjIgMzggQzE2IDM2IDEwIDMwIDEwIDI0IEwxMCAxNCBaIiBmaWxsPSJub25lIiBzdHJva2U9IiNjOGE4NGIiIHN0cm9rZS13aWR0aD0iMS41Ii8+CiAgPHBhdGggZD0iTTIyIDExIEwzMiAxNi41IEwzMiAyNCBDMzIgMjkgMjcgMzQgMjIgMzYgQzE3IDM0IDEyIDI5IDEyIDI0IEwxMiAxNi41IFoiIGZpbGw9IiMxYTNhMmEiLz4KICA8cGF0aCBkPSJNMTcgMjIgTDIwLjUgMjUuNSBMMjcgMTkiIHN0cm9rZT0iI2M4YTg0YiIgc3Ryb2tlLXdpZHRoPSIyLjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgZmlsbD0ibm9uZSIvPgogIDx0ZXh0IHg9IjIyIiB5PSI0MSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9Im1vbm9zcGFjZSIgZm9udC1zaXplPSI0LjUiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSIjYzhhODRiIiBsZXR0ZXItc3BhY2luZz0iMC41Ij5TQzwvdGV4dD4KPC9zdmc+";
 
-function checkPassword() {
-  const val = document.getElementById('pw-input').value;
-  if (val === APP_PASSWORD) {
-    document.getElementById('password-screen').style.display = 'none';
-    document.getElementById('app').style.display = 'block';
-    initApp();
-  } else {
-    document.getElementById('pw-error').style.display = 'block';
-    document.getElementById('pw-input').value = '';
-    document.getElementById('pw-input').focus();
+// ── INDUSTRY DATA (from React source) ──
+const industries = [
+  {
+    id:"bank",label:"Banks & Credit Unions",icon:"🏦",accent:"#b8860b",
+    intro:"Financial institutions face strict regulatory scrutiny. A single compliance miss can trigger branch-level audits. This scorecard identifies the exact vulnerabilities regional managers get written up for.",
+    categories:[
+      {name:"Customer-Facing Areas",items:[
+        {id:"b1",label:"Lobby floors — no scuffs, debris, or moisture tracking",risk:"HIGH"},
+        {id:"b2",label:"Glass entry doors — fingerprint-free, streak-free",risk:"HIGH"},
+        {id:"b3",label:"Teller counters — sanitized, no residue or film",risk:"HIGH"},
+        {id:"b4",label:"Queue barrier poles and ropes — dusted and wiped",risk:"MED"},
+        {id:"b5",label:"ATM surround and touchscreen frame — clean, no grime buildup",risk:"HIGH"},
+        {id:"b6",label:"Waiting area seating — stain-free, sanitized between use",risk:"MED"},
+        {id:"b7",label:"Brochure and literature racks — dust-free",risk:"LOW"}
+      ]},
+      {name:"Restrooms",items:[
+        {id:"b8",label:"Toilets and urinals — no scaling, rust, or odor",risk:"HIGH"},
+        {id:"b9",label:"Sinks and faucet handles — sanitized, no water stains",risk:"HIGH"},
+        {id:"b10",label:"Floors — grout lines clean, no pooling water",risk:"HIGH"},
+        {id:"b11",label:"Soap and paper towel dispensers — fully stocked",risk:"HIGH"},
+        {id:"b12",label:"Mirrors — streak-free, properly lit",risk:"MED"},
+        {id:"b13",label:"Trash receptacle — liner present, not overflowing",risk:"MED"},
+        {id:"b14",label:"Odor control active — air freshener or wick system present",risk:"HIGH"}
+      ]},
+      {name:"Private & Compliance Zones",items:[
+        {id:"b15",label:"Loan office desks — wiped and sanitized daily",risk:"MED"},
+        {id:"b16",label:"Conference rooms — whiteboards erased, surfaces clean",risk:"MED"},
+        {id:"b17",label:"Vault ante-room — no dust accumulation on floors or shelves",risk:"HIGH"},
+        {id:"b18",label:"Safe deposit area — floors and surfaces spotless",risk:"HIGH"},
+        {id:"b19",label:"Document shredder surrounds — debris managed",risk:"LOW"}
+      ]},
+      {name:"Break Room & Staff Areas",items:[
+        {id:"b20",label:"Microwave interior — splatter-free",risk:"MED"},
+        {id:"b21",label:"Refrigerator exterior — wiped and sanitized",risk:"MED"},
+        {id:"b22",label:"Coffee station — no grounds, drips, or buildup",risk:"MED"},
+        {id:"b23",label:"Floor under furniture — not skipped during cleaning",risk:"LOW"},
+        {id:"b24",label:"Sink — clean, no standing water or residue",risk:"HIGH"}
+      ]},
+      {name:"Exterior & Threshold",items:[
+        {id:"b25",label:"Entry mat — clean, secure, no trip hazard",risk:"HIGH"},
+        {id:"b26",label:"Exterior signage — no dust or cobweb buildup",risk:"MED"},
+        {id:"b27",label:"Parking lot entrance — no debris accumulation at door",risk:"LOW"},
+        {id:"b28",label:"Drive-thru lane — vacuum tube clean, ledge wiped",risk:"MED"}
+      ]}
+    ]
+  },
+  {
+    id:"dealer",label:"Auto Dealerships",icon:"🚗",accent:"#c0392b",
+    intro:"Auto dealerships are judged in the first 90 seconds. A customer walking a dirty showroom floor loses confidence before they shake hands. OEM brand audits specifically target cleanliness as a franchise compliance metric.",
+    categories:[
+      {name:"Showroom Floor",items:[
+        {id:"d1",label:"Showroom floors — polished, no tire marks or scuffs",risk:"HIGH"},
+        {id:"d2",label:"Vehicle display surfaces — fingerprint and dust-free",risk:"HIGH"},
+        {id:"d3",label:"Window glass — streak-free from all angles",risk:"HIGH"},
+        {id:"d4",label:"Feature display pedestals and signage — dusted",risk:"MED"},
+        {id:"d5",label:"Under vehicle display lighting areas — no debris",risk:"MED"},
+        {id:"d6",label:"Ceiling vents above showroom — no dust fallout",risk:"MED"}
+      ]},
+      {name:"Customer Lounge & Waiting Area",items:[
+        {id:"d7",label:"Seating — no stains, crumbs, or odor",risk:"HIGH"},
+        {id:"d8",label:"Coffee station — fully stocked, surfaces wiped",risk:"HIGH"},
+        {id:"d9",label:"TV and screen mounts — dust-free",risk:"LOW"},
+        {id:"d10",label:"Children's area (if present) — sanitized toys and surfaces",risk:"HIGH"},
+        {id:"d11",label:"Floors under seating — not skipped",risk:"MED"},
+        {id:"d12",label:"Magazines / literature — organized, not yellowed or bent",risk:"LOW"}
+      ]},
+      {name:"Service Drive & Write-Up Area",items:[
+        {id:"d13",label:"Write-up desks — wiped and organized daily",risk:"HIGH"},
+        {id:"d14",label:"Service drive floor — oil spot-treated, no pooling",risk:"HIGH"},
+        {id:"d15",label:"Service advisor computers and screens — dust-free",risk:"MED"},
+        {id:"d16",label:"Key hook boards — dusted, organized",risk:"LOW"},
+        {id:"d17",label:"Customer vehicle staging area — swept and marked",risk:"MED"}
+      ]},
+      {name:"Service Bays",items:[
+        {id:"d18",label:"Bay floors — degreased, no fluid accumulation",risk:"HIGH"},
+        {id:"d19",label:"Drain covers — clear, no buildup",risk:"HIGH"},
+        {id:"d20",label:"Tool stations — wiped, organized nightly",risk:"MED"},
+        {id:"d21",label:"Lifts and lift surrounds — no grease buildup on posts",risk:"MED"},
+        {id:"d22",label:"Air hose and cord retractors — clean exterior",risk:"LOW"},
+        {id:"d23",label:"Bay windows and glass — clean for safety visibility",risk:"HIGH"}
+      ]},
+      {name:"Restrooms (Customer & Staff)",items:[
+        {id:"d24",label:"Customer restroom — showroom-level standard",risk:"HIGH"},
+        {id:"d25",label:"Staff restroom — sanitary, odor-controlled",risk:"HIGH"},
+        {id:"d26",label:"Floors — clean grout, no standing water",risk:"HIGH"},
+        {id:"d27",label:"Supplies stocked — soap, paper, air freshener",risk:"HIGH"}
+      ]},
+      {name:"Parts Counter & Storage",items:[
+        {id:"d28",label:"Parts counter top — clean, no grease transfer to customers",risk:"HIGH"},
+        {id:"d29",label:"Retail display area — dusted and faced",risk:"MED"},
+        {id:"d30",label:"Floor behind counter — swept daily",risk:"MED"}
+      ]}
+    ]
+  },
+  {
+    id:"medical",label:"Medical Offices",icon:"🏥",accent:"#0e8a7a",
+    intro:"Medical environments carry the highest liability for cleaning failures. OSHA, HIPAA, and state health codes all intersect here. A single non-compliance event can result in fines, patient complaints, or worse.",
+    categories:[
+      {name:"Reception & Waiting Room",items:[
+        {id:"m1",label:"Chairs and armrests — sanitized between patient use",risk:"HIGH"},
+        {id:"m2",label:"Reception desk counter — disinfected hourly during peak hours",risk:"HIGH"},
+        {id:"m3",label:"Door handles and push plates — disinfected on schedule",risk:"HIGH"},
+        {id:"m4",label:"Children's toys (if present) — sanitized and rotated",risk:"HIGH"},
+        {id:"m5",label:"Magazines — removed (infection vector) per CDC guidance",risk:"MED"},
+        {id:"m6",label:"Hand sanitizer stations — full and operational",risk:"HIGH"}
+      ]},
+      {name:"Exam Rooms",items:[
+        {id:"m7",label:"Exam table and paper — fresh paper pulled for each patient",risk:"HIGH"},
+        {id:"m8",label:"Exam table frame and stirrups — disinfected between patients",risk:"HIGH"},
+        {id:"m9",label:"Counter and sink — disinfected after each room turn",risk:"HIGH"},
+        {id:"m10",label:"Equipment (BP cuff, otoscope handles) — wiped with EPA-approved disinfectant",risk:"HIGH"},
+        {id:"m11",label:"Floors — mopped with hospital-grade disinfectant",risk:"HIGH"},
+        {id:"m12",label:"Light switch plates and door handles — disinfected",risk:"HIGH"},
+        {id:"m13",label:"Biohazard waste container — lined, labeled, not overfilled",risk:"HIGH"}
+      ]},
+      {name:"Restrooms",items:[
+        {id:"m14",label:"Toilet — sanitized with EPA-registered disinfectant",risk:"HIGH"},
+        {id:"m15",label:"Specimen collection area — sanitized and stocked",risk:"HIGH"},
+        {id:"m16",label:"Floors — disinfected, no moisture hazard",risk:"HIGH"},
+        {id:"m17",label:"Trash — biohazard-segregated if applicable",risk:"HIGH"}
+      ]},
+      {name:"Lab & Clinical Prep Areas",items:[
+        {id:"m18",label:"Lab surfaces — decontaminated per protocol",risk:"HIGH"},
+        {id:"m19",label:"Sharps containers — not overfilled, labeled",risk:"HIGH"},
+        {id:"m20",label:"Refrigerator exterior — wiped daily",risk:"MED"},
+        {id:"m21",label:"Floor — no spills unaddressed, mopped with disinfectant",risk:"HIGH"}
+      ]}
+    ]
+  },
+  {
+    id:"hotel",label:"Hotels & Hospitality",icon:"🏨",accent:"#b5860a",
+    intro:"Hotels live and die by online reviews. A single poor hygiene mention on Google or TripAdvisor can cost thousands in lost bookings. Brand flags conduct surprise inspections quarterly — this scorecard mirrors exactly what they check.",
+    categories:[
+      {name:"Guest Rooms",items:[
+        {id:"h1",label:"Bedding — visibly spotless, crisp, no hair or debris",risk:"HIGH"},
+        {id:"h2",label:"Under bed — vacuumed, no dust buildup",risk:"HIGH"},
+        {id:"h3",label:"Remote controls — disinfected (highest-touch item in room)",risk:"HIGH"},
+        {id:"h4",label:"Phone handset — disinfected",risk:"HIGH"},
+        {id:"h5",label:"Closet rod and hangers — dusted",risk:"MED"},
+        {id:"h6",label:"HVAC vent face — no visible dust accumulation",risk:"MED"},
+        {id:"h7",label:"Mirrors — streak-free from all angles",risk:"MED"},
+        {id:"h8",label:"Mini fridge exterior and interior — clean and odor-free",risk:"HIGH"}
+      ]},
+      {name:"Guest Bathrooms",items:[
+        {id:"h9",label:"Toilet — disinfected including base and behind",risk:"HIGH"},
+        {id:"h10",label:"Shower/tub — no soap scum, mold, or hair",risk:"HIGH"},
+        {id:"h11",label:"Grout lines — no black mold present",risk:"HIGH"},
+        {id:"h12",label:"Exhaust fan — dust-free",risk:"MED"},
+        {id:"h13",label:"Amenity tray — clean, restocked to brand standard",risk:"HIGH"},
+        {id:"h14",label:"Hair dryer — clean, stored properly",risk:"MED"}
+      ]},
+      {name:"Lobby & Common Areas",items:[
+        {id:"h15",label:"Entry glass — fingerprint-free at all times",risk:"HIGH"},
+        {id:"h16",label:"Elevator buttons and cab — disinfected, walls wiped",risk:"HIGH"},
+        {id:"h17",label:"Lobby seating — stain-free and sanitized",risk:"HIGH"},
+        {id:"h18",label:"Ice machine area — floor and surround clean, no mold on chute",risk:"HIGH"},
+        {id:"h19",label:"Pool deck and surround — no algae, debris, or hazards",risk:"HIGH"},
+        {id:"h20",label:"Fitness center equipment — disinfected, wipes stocked",risk:"HIGH"}
+      ]},
+      {name:"Food & Beverage Areas",items:[
+        {id:"h21",label:"Breakfast bar surfaces — sanitized before and after service",risk:"HIGH"},
+        {id:"h22",label:"Coffee station — clean base, no grounds accumulation",risk:"HIGH"},
+        {id:"h23",label:"Floor under and behind service areas — not skipped",risk:"HIGH"},
+        {id:"h24",label:"Refrigerated display exterior — clean, no smudge",risk:"MED"}
+      ]}
+    ]
+  },
+  {
+    id:"office",label:"Corporate Offices",icon:"🏢",accent:"#1a6fa8",
+    intro:"Corporate tenants judge their buildings by what their clients see first. Property managers face lease renewal pressure when cleanliness complaints stack up. This scorecard identifies the friction points before tenants do.",
+    categories:[
+      {name:"Building Entrance & Lobby",items:[
+        {id:"o1",label:"Revolving door glass panels — streak-free, no smudge",risk:"HIGH"},
+        {id:"o2",label:"Entry mat — clean, secure, no upturned edges",risk:"HIGH"},
+        {id:"o3",label:"Reception desk — dusted, polished, sanitized daily",risk:"HIGH"},
+        {id:"o4",label:"Elevator call buttons — disinfected",risk:"HIGH"},
+        {id:"o5",label:"Lobby floors — polished, no scuffs from foot traffic",risk:"HIGH"},
+        {id:"o6",label:"Building directory — clean glass, no fingerprints",risk:"MED"}
+      ]},
+      {name:"Elevators",items:[
+        {id:"o7",label:"Cab walls — wiped, no marks or graffiti",risk:"HIGH"},
+        {id:"o8",label:"Floor — vacuumed or mopped daily",risk:"HIGH"},
+        {id:"o9",label:"Button panel — disinfected and clean",risk:"HIGH"},
+        {id:"o10",label:"Door tracks — debris-free",risk:"MED"},
+        {id:"o11",label:"Certificate frame — clean glass, current certificate visible",risk:"MED"}
+      ]},
+      {name:"Restrooms (Per Floor)",items:[
+        {id:"o12",label:"All fixtures — sanitized on documented schedule",risk:"HIGH"},
+        {id:"o13",label:"Floors — clean grout, no standing water",risk:"HIGH"},
+        {id:"o14",label:"Supplies — soap, paper, seat covers stocked",risk:"HIGH"},
+        {id:"o15",label:"Air quality — active deodorizer, no lingering odor",risk:"HIGH"},
+        {id:"o16",label:"Cleaning log — posted and current (within 2 hours)",risk:"HIGH"}
+      ]},
+      {name:"Common Kitchen / Break Room",items:[
+        {id:"o17",label:"Sink — no standing water, no food residue",risk:"HIGH"},
+        {id:"o18",label:"Microwave — interior clean, exterior wiped",risk:"MED"},
+        {id:"o19",label:"Refrigerator — exterior clean, expired items removed on schedule",risk:"MED"},
+        {id:"o20",label:"Counter and backsplash — no crumbs, spills, or grease",risk:"HIGH"},
+        {id:"o21",label:"Floor — mopped, under appliances not skipped",risk:"MED"}
+      ]},
+      {name:"Tenant Office Floors",items:[
+        {id:"o22",label:"Carpet — vacuumed fully including edges and under desks",risk:"MED"},
+        {id:"o23",label:"Hard floor — dust-mopped and periodic wet mop",risk:"MED"},
+        {id:"o24",label:"Trash liners — replaced nightly, no overflow",risk:"HIGH"},
+        {id:"o25",label:"Conference room tables — wiped and sanitized after use",risk:"HIGH"},
+        {id:"o26",label:"Window sills and ledges — dusted weekly",risk:"LOW"}
+      ]}
+    ]
+  },
+  {
+    id:"school",label:"Schools & Universities",icon:"🎓",accent:"#c4600a",
+    intro:"Educational institutions face mandatory health inspections and parent scrutiny. Outbreaks traced back to cleaning failures make local news. This scorecard targets the zones where contamination most frequently originates.",
+    categories:[
+      {name:"Classrooms",items:[
+        {id:"s1",label:"Desktops — disinfected between class periods or daily",risk:"HIGH"},
+        {id:"s2",label:"Door handles — disinfected on documented schedule",risk:"HIGH"},
+        {id:"s3",label:"Floors — vacuumed/swept and mopped",risk:"MED"},
+        {id:"s4",label:"Whiteboards and trays — erased, wiped",risk:"LOW"},
+        {id:"s5",label:"Trash — emptied daily, no overflow",risk:"MED"},
+        {id:"s6",label:"Window sills — dust-free",risk:"LOW"}
+      ]},
+      {name:"Restrooms",items:[
+        {id:"s7",label:"Toilets — disinfected multiple times daily",risk:"HIGH"},
+        {id:"s8",label:"Floors — dry, clean grout, no pooling",risk:"HIGH"},
+        {id:"s9",label:"Soap and paper dispensers — stocked throughout day",risk:"HIGH"},
+        {id:"s10",label:"Odor control — active, not masking an unsanitary condition",risk:"HIGH"},
+        {id:"s11",label:"Graffiti — removed within 24 hours",risk:"MED"}
+      ]},
+      {name:"Cafeteria & Food Service",items:[
+        {id:"s12",label:"Tables — sanitized before and after each meal period",risk:"HIGH"},
+        {id:"s13",label:"Floors — swept and mopped after each meal period",risk:"HIGH"},
+        {id:"s14",label:"Serving line surfaces — disinfected",risk:"HIGH"},
+        {id:"s15",label:"Trash and recycling — not allowed to overflow",risk:"HIGH"},
+        {id:"s16",label:"Floor drain — clear, no odor",risk:"HIGH"}
+      ]},
+      {name:"Gymnasium & Common Areas",items:[
+        {id:"s17",label:"Gym floor — swept daily, mopped per schedule",risk:"MED"},
+        {id:"s18",label:"Locker room benches — disinfected daily",risk:"HIGH"},
+        {id:"s19",label:"Shower areas — no mold, fully sanitized",risk:"HIGH"},
+        {id:"s20",label:"Hallways — mopped, scuff-free",risk:"MED"}
+      ]}
+    ]
+  },
+  {
+    id:"hoa",label:"Condo & HOA",icon:"🏘️",accent:"#2e8b57",
+    intro:"HOA boards and property management companies face direct pressure from dues-paying residents who inspect common areas daily. A single complaint at a board meeting can put your contract on the agenda. This scorecard covers every common area residents photograph and post in their community group chats.",
+    categories:[
+      {name:"Building Lobby & Entrance",items:[
+        {id:"hoa1",label:"Entry doors and glass panels — fingerprint-free, streak-free",risk:"HIGH"},
+        {id:"hoa2",label:"Lobby floors — swept, mopped, no tracked-in debris or moisture",risk:"HIGH"},
+        {id:"hoa3",label:"Welcome mat / entry rug — clean, flat, no trip hazard",risk:"HIGH"},
+        {id:"hoa4",label:"Mailroom area — floors swept, no debris or junk mail accumulation",risk:"MED"},
+        {id:"hoa5",label:"Package room / parcel area — swept, no cardboard buildup",risk:"MED"},
+        {id:"hoa6",label:"Intercom and call panel — wiped, no grime buildup",risk:"MED"},
+        {id:"hoa7",label:"Bulletin board area — clean surround, no peeling or debris",risk:"LOW"}
+      ]},
+      {name:"Elevators & Stairwells",items:[
+        {id:"hoa8",label:"Elevator cab walls — wiped, no scuffs, marks, or graffiti",risk:"HIGH"},
+        {id:"hoa9",label:"Elevator floor — vacuumed or mopped daily",risk:"HIGH"},
+        {id:"hoa10",label:"Elevator buttons and panel — disinfected, no grime buildup",risk:"HIGH"},
+        {id:"hoa11",label:"Elevator door tracks — debris-free, no buildup",risk:"MED"},
+        {id:"hoa12",label:"Stairwells — swept every floor, no cobwebs at corners",risk:"HIGH"},
+        {id:"hoa13",label:"Stairwell handrails — wiped and disinfected",risk:"HIGH"},
+        {id:"hoa14",label:"Stairwell landings — mopped, no scuff marks",risk:"MED"},
+        {id:"hoa15",label:"Emergency exit doors — clean, no dust or debris buildup at base",risk:"MED"}
+      ]},
+      {name:"Hallways & Common Corridors",items:[
+        {id:"hoa16",label:"Corridor floors — vacuumed (carpet) or mopped (hard), edge-to-edge",risk:"HIGH"},
+        {id:"hoa17",label:"Corridor walls — no scuffs, marks, or dirty fingerprints",risk:"MED"},
+        {id:"hoa18",label:"Light fixtures and covers — dust-free, no dead insects",risk:"MED"},
+        {id:"hoa19",label:"HVAC vents in hallways — no visible dust fallout on walls below",risk:"MED"},
+        {id:"hoa20",label:"Fire extinguisher cabinets — exterior wiped, glass clean",risk:"LOW"},
+        {id:"hoa21",label:"Unit door thresholds — no debris accumulation at base",risk:"LOW"}
+      ]},
+      {name:"Pool & Deck",items:[
+        {id:"hoa22",label:"Pool deck — swept, no debris, no algae on surfaces",risk:"HIGH"},
+        {id:"hoa23",label:"Pool furniture — wiped, stacked or arranged neatly",risk:"HIGH"},
+        {id:"hoa24",label:"Pool restrooms / changing area — sanitized, stocked, odor-controlled",risk:"HIGH"},
+        {id:"hoa25",label:"Pool shower area — no mold, drain clear, no standing water",risk:"HIGH"},
+        {id:"hoa26",label:"Pool equipment room exterior — swept, no debris at door",risk:"MED"},
+        {id:"hoa27",label:"Trash receptacles on deck — liners present, not overflowing",risk:"HIGH"},
+        {id:"hoa28",label:"Signage (rules, hours) — clean, no mildew or fading from neglect",risk:"LOW"}
+      ]},
+      {name:"Fitness Center",items:[
+        {id:"hoa29",label:"Equipment surfaces — disinfected daily, no sweat residue",risk:"HIGH"},
+        {id:"hoa30",label:"Disinfectant wipes or spray station — stocked and functional",risk:"HIGH"},
+        {id:"hoa31",label:"Mirrors — streak-free",risk:"MED"},
+        {id:"hoa32",label:"Floors — swept and mopped, no rubber mat buildup underneath",risk:"HIGH"},
+        {id:"hoa33",label:"Trash — emptied daily, no odor from used towels or wipes",risk:"HIGH"},
+        {id:"hoa34",label:"Water fountain / bottle filler — sanitized, no lime buildup",risk:"HIGH"}
+      ]},
+      {name:"Clubhouse / Community Room",items:[
+        {id:"hoa35",label:"Tables and chairs — wiped and arranged after every use",risk:"HIGH"},
+        {id:"hoa36",label:"Kitchen / kitchenette — sink clean, counters wiped, no odor",risk:"HIGH"},
+        {id:"hoa37",label:"Floors — swept and mopped after each event or booking",risk:"HIGH"},
+        {id:"hoa38",label:"Restrooms — sanitized, stocked, odor-controlled",risk:"HIGH"},
+        {id:"hoa39",label:"Trash — emptied after every use, liner replaced",risk:"HIGH"},
+        {id:"hoa40",label:"Windows and glass doors — streak-free",risk:"MED"},
+        {id:"hoa41",label:"AV equipment and remotes — dusted, wiped",risk:"LOW"}
+      ]},
+      {name:"Parking Garage & Exterior",items:[
+        {id:"hoa42",label:"Garage floors — swept, no oil accumulation, drain covers clear",risk:"HIGH"},
+        {id:"hoa43",label:"Garage stairwells — swept, no debris or cobwebs",risk:"HIGH"},
+        {id:"hoa44",label:"Garage lighting fixtures — dust-free, no dead insects in covers",risk:"MED"},
+        {id:"hoa45",label:"Dumpster enclosure — swept, no overflow, doors can close fully",risk:"HIGH"},
+        {id:"hoa46",label:"Building exterior entry points — no cobwebs, debris, or leaf buildup",risk:"MED"},
+        {id:"hoa47",label:"Recycling area — clean, no cardboard or loose material scattered",risk:"MED"},
+        {id:"hoa48",label:"Bike storage area — swept, organized, no debris",risk:"LOW"}
+      ]}
+    ]
+  },
+  {
+    id:"retail",label:"Retail & Shopping",icon:"🛍️",accent:"#b83232",
+    intro:"Retail cleanliness directly correlates with dwell time, cart size, and return visits. Property management companies inspect for brand compliance across all anchor tenants. One bad walkthrough can trigger a corrective action notice.",
+    categories:[
+      {name:"Store Floor & Aisles",items:[
+        {id:"r1",label:"Main aisle floors — clean, dry, no spill cones left unaddressed",risk:"HIGH"},
+        {id:"r2",label:"Endcap bases — swept, no product dust buildup",risk:"MED"},
+        {id:"r3",label:"Under shelving — not skipped during cleaning cycles",risk:"MED"},
+        {id:"r4",label:"Entrance mat — clean, secure",risk:"HIGH"},
+        {id:"r5",label:"Entry glass — fingerprint-free at open",risk:"HIGH"}
+      ]},
+      {name:"Fitting Rooms",items:[
+        {id:"r6",label:"Floors — swept and sanitized between shoppers",risk:"HIGH"},
+        {id:"r7",label:"Mirrors — streak-free",risk:"HIGH"},
+        {id:"r8",label:"Hooks and walls — wiped, no marks",risk:"MED"},
+        {id:"r9",label:"Odor — neutral and fresh",risk:"HIGH"}
+      ]},
+      {name:"Restrooms",items:[
+        {id:"r10",label:"All fixtures — disinfected on posted schedule",risk:"HIGH"},
+        {id:"r11",label:"Supplies — stocked throughout business hours",risk:"HIGH"},
+        {id:"r12",label:"Cleaning log — posted and current",risk:"HIGH"},
+        {id:"r13",label:"Baby changing station — sanitized and stocked with paper",risk:"HIGH"}
+      ]},
+      {name:"Food Court / Dining",items:[
+        {id:"r14",label:"Tables — wiped between every customer",risk:"HIGH"},
+        {id:"r15",label:"Floors — swept every 30 minutes during peak hours",risk:"HIGH"},
+        {id:"r16",label:"Trash stations — not overflowing at any time",risk:"HIGH"},
+        {id:"r17",label:"Tray return area — sanitized, not neglected",risk:"MED"}
+      ]}
+    ]
   }
-}
-document.getElementById('pw-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') checkPassword();
-});
+];
 
-// ─── INDUSTRY DATA ───────────────────────────────────────────────────────────
-const industries = {
-  medical: {
-    name: '🏥 Medical',
-    categories: {
-      'Reception & Waiting Areas': [
-        { label: 'All seating wiped and disinfected', risk: 'HIGH' },
-        { label: 'Magazine racks cleared or sanitized', risk: 'MED' },
-        { label: 'Reception desk disinfected', risk: 'HIGH' },
-        { label: 'Door handles and push plates sanitized', risk: 'HIGH' },
-        { label: 'Floors vacuumed and mopped', risk: 'MED' },
-      ],
-      'Exam Rooms': [
-        { label: 'Exam tables disinfected between patients', risk: 'HIGH' },
-        { label: 'All surfaces (counters, trays) disinfected', risk: 'HIGH' },
-        { label: 'Biohazard bins properly lined and covered', risk: 'HIGH' },
-        { label: 'Sinks and fixtures sanitized', risk: 'HIGH' },
-        { label: 'Floors mopped with disinfectant', risk: 'MED' },
-      ],
-      'Restrooms': [
-        { label: 'Toilets and urinals disinfected', risk: 'HIGH' },
-        { label: 'Sinks, faucets, mirrors cleaned', risk: 'HIGH' },
-        { label: 'Soap and paper towels restocked', risk: 'HIGH' },
-        { label: 'Floors disinfected', risk: 'HIGH' },
-        { label: 'Trash emptied and relined', risk: 'MED' },
-      ],
-      'Break Room / Staff Areas': [
-        { label: 'Microwave and appliances wiped', risk: 'MED' },
-        { label: 'Counters and sink cleaned', risk: 'MED' },
-        { label: 'Trash emptied', risk: 'LOW' },
-        { label: 'Refrigerator exterior wiped', risk: 'LOW' },
-      ],
-      'General / Compliance': [
-        { label: 'OSHA bloodborne pathogen protocols followed', risk: 'HIGH' },
-        { label: 'All cleaning products EPA-registered', risk: 'HIGH' },
-        { label: 'Dwell times observed for disinfectants', risk: 'HIGH' },
-        { label: 'Cleaning logs completed', risk: 'MED' },
-        { label: 'PPE worn by cleaning staff', risk: 'HIGH' },
-      ]
-    }
-  },
-  law: {
-    name: '⚖️ Law Firm',
-    categories: {
-      'Reception & Lobby': [
-        { label: 'Reception desk dusted and wiped', risk: 'MED' },
-        { label: 'Seating upholstery vacuumed', risk: 'LOW' },
-        { label: 'Glass doors and partitions streak-free', risk: 'MED' },
-        { label: 'Floors vacuumed and mopped', risk: 'MED' },
-        { label: 'Plants dusted', risk: 'LOW' },
-      ],
-      'Conference Rooms': [
-        { label: 'Conference table wiped and polished', risk: 'HIGH' },
-        { label: 'All chairs wiped down', risk: 'MED' },
-        { label: 'AV equipment dusted', risk: 'MED' },
-        { label: 'Whiteboard cleaned', risk: 'LOW' },
-        { label: 'Floors vacuumed', risk: 'MED' },
-        { label: 'Trash emptied', risk: 'LOW' },
-      ],
-      'Attorney Offices': [
-        { label: 'Desk surfaces dusted (without moving files)', risk: 'MED' },
-        { label: 'Floors vacuumed', risk: 'MED' },
-        { label: 'Trash emptied', risk: 'LOW' },
-        { label: 'Windowsills dusted', risk: 'LOW' },
-      ],
-      'Restrooms': [
-        { label: 'Toilets and urinals disinfected', risk: 'HIGH' },
-        { label: 'Sinks, faucets, mirrors polished', risk: 'HIGH' },
-        { label: 'Consumables restocked', risk: 'MED' },
-        { label: 'Floors disinfected and dry', risk: 'HIGH' },
-        { label: 'Trash emptied and relined', risk: 'MED' },
-      ],
-      'Kitchen / Break Room': [
-        { label: 'Counters wiped', risk: 'MED' },
-        { label: 'Sink cleaned and sanitized', risk: 'MED' },
-        { label: 'Microwave interior wiped', risk: 'LOW' },
-        { label: 'Trash emptied', risk: 'LOW' },
-        { label: 'Floors mopped', risk: 'MED' },
-      ]
-    }
-  },
-  bank: {
-    name: '🏦 Bank',
-    categories: {
-      'Lobby & Public Areas': [
-        { label: 'ATM and kiosk surfaces disinfected', risk: 'HIGH' },
-        { label: 'Teller counter wiped and sanitized', risk: 'HIGH' },
-        { label: 'Queue barriers wiped down', risk: 'MED' },
-        { label: 'Entry doors and handles sanitized', risk: 'HIGH' },
-        { label: 'Floors swept and mopped', risk: 'MED' },
-      ],
-      'Offices & Meeting Rooms': [
-        { label: 'Desks and surfaces dusted', risk: 'MED' },
-        { label: 'Chairs wiped down', risk: 'LOW' },
-        { label: 'Glass surfaces cleaned', risk: 'MED' },
-        { label: 'Floors vacuumed', risk: 'LOW' },
-        { label: 'Trash emptied', risk: 'LOW' },
-      ],
-      'Vault / Secure Areas': [
-        { label: 'Floors swept and clean', risk: 'MED' },
-        { label: 'Surfaces dusted (no sensitive materials moved)', risk: 'MED' },
-        { label: 'Access noted in cleaning log', risk: 'HIGH' },
-      ],
-      'Restrooms': [
-        { label: 'Fixtures disinfected', risk: 'HIGH' },
-        { label: 'Consumables restocked', risk: 'MED' },
-        { label: 'Floors disinfected', risk: 'HIGH' },
-        { label: 'Trash emptied', risk: 'MED' },
-      ],
-      'Break Room': [
-        { label: 'Counters and sink cleaned', risk: 'MED' },
-        { label: 'Appliances wiped', risk: 'LOW' },
-        { label: 'Trash emptied', risk: 'LOW' },
-      ]
-    }
-  },
-  auto: {
-    name: '🚗 Auto Dealership',
-    categories: {
-      'Showroom Floor': [
-        { label: 'Vehicle display surfaces and dashboards dusted', risk: 'MED' },
-        { label: 'Showroom floors polished or mopped', risk: 'HIGH' },
-        { label: 'Glass doors and windows streak-free', risk: 'MED' },
-        { label: 'Displays and signage dusted', risk: 'LOW' },
-        { label: 'Seating areas vacuumed', risk: 'MED' },
-      ],
-      'Customer Waiting Lounge': [
-        { label: 'All seating wiped down', risk: 'HIGH' },
-        { label: 'Coffee/refreshment area cleaned', risk: 'HIGH' },
-        { label: 'TV and tables dusted', risk: 'LOW' },
-        { label: 'Floors vacuumed', risk: 'MED' },
-        { label: 'Trash emptied', risk: 'MED' },
-      ],
-      'Service Advisors / Offices': [
-        { label: 'Desks and counters wiped', risk: 'MED' },
-        { label: 'Keyboards and phones sanitized', risk: 'MED' },
-        { label: 'Floors vacuumed', risk: 'LOW' },
-        { label: 'Trash emptied', risk: 'LOW' },
-      ],
-      'Restrooms': [
-        { label: 'Fixtures disinfected', risk: 'HIGH' },
-        { label: 'Consumables restocked', risk: 'MED' },
-        { label: 'Floors disinfected', risk: 'HIGH' },
-        { label: 'Trash emptied', risk: 'MED' },
-      ],
-      'Service Bay (Common Areas)': [
-        { label: 'Customer-accessible areas swept', risk: 'MED' },
-        { label: 'Oil/grease on floors addressed', risk: 'HIGH' },
-        { label: 'Trash removed', risk: 'LOW' },
-      ]
-    }
-  },
-  corporate: {
-    name: '🏢 Corporate Office',
-    categories: {
-      'Lobby & Common Areas': [
-        { label: 'Reception desk and counters dusted and wiped', risk: 'MED' },
-        { label: 'Seating vacuumed', risk: 'LOW' },
-        { label: 'Glass entry doors streak-free', risk: 'MED' },
-        { label: 'Floors vacuumed/mopped', risk: 'MED' },
-        { label: 'Elevators wiped down', risk: 'MED' },
-      ],
-      'Open Office / Workstations': [
-        { label: 'Desk surfaces dusted', risk: 'MED' },
-        { label: 'Phones and keyboards sanitized', risk: 'HIGH' },
-        { label: 'Floors vacuumed under desks', risk: 'LOW' },
-        { label: 'Trash emptied', risk: 'LOW' },
-        { label: 'Recycling bins emptied', risk: 'LOW' },
-      ],
-      'Conference Rooms': [
-        { label: 'Table and chairs wiped', risk: 'MED' },
-        { label: 'AV and tech equipment dusted', risk: 'LOW' },
-        { label: 'Whiteboard/glassboard cleaned', risk: 'LOW' },
-        { label: 'Floors vacuumed', risk: 'LOW' },
-        { label: 'Trash emptied', risk: 'LOW' },
-      ],
-      'Restrooms': [
-        { label: 'Fixtures disinfected', risk: 'HIGH' },
-        { label: 'Consumables restocked', risk: 'HIGH' },
-        { label: 'Mirrors cleaned', risk: 'MED' },
-        { label: 'Floors disinfected', risk: 'HIGH' },
-        { label: 'Trash emptied', risk: 'MED' },
-      ],
-      'Kitchen / Break Room': [
-        { label: 'Counters and sink sanitized', risk: 'HIGH' },
-        { label: 'Appliances wiped', risk: 'MED' },
-        { label: 'Dishwasher loaded/run', risk: 'LOW' },
-        { label: 'Floors mopped', risk: 'MED' },
-        { label: 'Trash emptied', risk: 'LOW' },
-      ]
-    }
-  },
-  hotel: {
-    name: '🏨 Hotel / STR',
-    categories: {
-      'Guest Rooms (Full Turnover)': [
-        { label: 'All bedding stripped and replaced', risk: 'HIGH' },
-        { label: 'Mattress pad and pillows inspected', risk: 'HIGH' },
-        { label: 'All hard surfaces disinfected', risk: 'HIGH' },
-        { label: 'Closets and drawers checked/reset', risk: 'MED' },
-        { label: 'Floors vacuumed and mopped', risk: 'MED' },
-        { label: 'Mirrors and windows wiped streak-free', risk: 'LOW' },
-        { label: 'Trash emptied and bins relined', risk: 'MED' },
-        { label: 'Welcome amenities restocked', risk: 'MED' },
-      ],
-      'Bathroom (Full Turnover)': [
-        { label: 'Toilet fully disinfected inside and out', risk: 'HIGH' },
-        { label: 'Shower and tub scrubbed and disinfected', risk: 'HIGH' },
-        { label: 'Sink and faucet disinfected', risk: 'HIGH' },
-        { label: 'Mirror and glass cleaned', risk: 'MED' },
-        { label: 'All towels replaced with fresh linens', risk: 'HIGH' },
-        { label: 'Toiletries restocked', risk: 'MED' },
-        { label: 'Floor disinfected', risk: 'HIGH' },
-        { label: 'Hair dryer and accessories wiped', risk: 'LOW' },
-      ],
-      'Common Areas & Corridors': [
-        { label: 'Hallways vacuumed', risk: 'MED' },
-        { label: 'Elevator buttons sanitized', risk: 'HIGH' },
-        { label: 'Lobby floors clean and dry', risk: 'MED' },
-        { label: 'Vending area wiped down', risk: 'LOW' },
-      ],
-      'Inspection Standards': [
-        { label: 'No visible dust, hair, or debris', risk: 'HIGH' },
-        { label: 'No odors present', risk: 'HIGH' },
-        { label: 'All damage noted and reported', risk: 'HIGH' },
-        { label: 'Completion photo taken', risk: 'MED' },
-        { label: 'Supervisor sign-off obtained', risk: 'MED' },
-      ]
-    }
-  },
-  school: {
-    name: '🏫 School',
-    categories: {
-      'Classrooms': [
-        { label: 'Desks and chairs wiped and disinfected', risk: 'HIGH' },
-        { label: 'Teacher desk and whiteboard cleaned', risk: 'MED' },
-        { label: 'High-touch surfaces (light switches, door handles) sanitized', risk: 'HIGH' },
-        { label: 'Floors swept and mopped', risk: 'MED' },
-        { label: 'Trash emptied', risk: 'LOW' },
-      ],
-      'Restrooms': [
-        { label: 'Toilets and urinals disinfected', risk: 'HIGH' },
-        { label: 'Sinks and mirrors cleaned', risk: 'HIGH' },
-        { label: 'Soap and paper towels restocked', risk: 'HIGH' },
-        { label: 'Floors disinfected', risk: 'HIGH' },
-        { label: 'Trash emptied and relined', risk: 'MED' },
-      ],
-      'Cafeteria': [
-        { label: 'Tables disinfected', risk: 'HIGH' },
-        { label: 'Benches and chairs wiped', risk: 'HIGH' },
-        { label: 'Floors swept and mopped', risk: 'HIGH' },
-        { label: 'Trash and recycling emptied', risk: 'MED' },
-        { label: 'Food service surfaces sanitized', risk: 'HIGH' },
-      ],
-      'Gymnasium / Common Spaces': [
-        { label: 'Gym floor swept', risk: 'MED' },
-        { label: 'Equipment surfaces wiped', risk: 'MED' },
-        { label: 'Bleachers dusted', risk: 'LOW' },
-        { label: 'Locker rooms cleaned', risk: 'HIGH' },
-      ],
-      'Administrative Offices': [
-        { label: 'Surfaces dusted and wiped', risk: 'MED' },
-        { label: 'Floors vacuumed', risk: 'LOW' },
-        { label: 'Trash emptied', risk: 'LOW' },
-      ]
-    }
-  },
-  hoa: {
-    name: '🏘 HOA',
-    categories: {
-      'Clubhouse / Community Room': [
-        { label: 'All seating and tables wiped', risk: 'MED' },
-        { label: 'Floors vacuumed and mopped', risk: 'MED' },
-        { label: 'Kitchen area cleaned and sanitized', risk: 'HIGH' },
-        { label: 'Trash emptied', risk: 'LOW' },
-        { label: 'AV and common equipment wiped', risk: 'LOW' },
-      ],
-      'Fitness Center': [
-        { label: 'All equipment wiped with disinfectant', risk: 'HIGH' },
-        { label: 'Mirrors cleaned', risk: 'LOW' },
-        { label: 'Floors swept and mopped', risk: 'MED' },
-        { label: 'Trash and towel bins emptied', risk: 'MED' },
-        { label: 'Sanitizer dispensers restocked', risk: 'HIGH' },
-      ],
-      'Pool Area / Restrooms': [
-        { label: 'Restrooms disinfected', risk: 'HIGH' },
-        { label: 'Shower areas cleaned', risk: 'HIGH' },
-        { label: 'Pool furniture wiped down', risk: 'MED' },
-        { label: 'Floors around pool dry and clean', risk: 'MED' },
-        { label: 'Consumables restocked', risk: 'MED' },
-      ],
-      'Common Hallways / Entryways': [
-        { label: 'Floors swept and mopped', risk: 'MED' },
-        { label: 'Mailbox area dusted', risk: 'LOW' },
-        { label: 'Entry glass cleaned', risk: 'LOW' },
-        { label: 'Trash receptacles emptied', risk: 'LOW' },
-      ]
-    }
-  }
+const riskCfg = {
+  HIGH:{bg:"#fef2f2",text:"#991b1b",border:"#fecaca"},
+  MED:{bg:"#fffbeb",text:"#92400e",border:"#fde68a"},
+  LOW:{bg:"#f0fdf4",text:"#166534",border:"#bbf7d0"}
+};
+const scoreCfg = {
+  pass:{label:"PASS",color:"#166534",bg:"#dcfce7",border:"#86efac"},
+  flag:{label:"FLAG",color:"#92400e",bg:"#fef3c7",border:"#fcd34d"},
+  fail:{label:"FAIL",color:"#991b1b",bg:"#fee2e2",border:"#fca5a5"},
+  na:{label:"N/A",color:"#6b7280",bg:"#f3f4f6",border:"#d1d5db"}
 };
 
-// ─── STATE ───────────────────────────────────────────────────────────────────
-let currentIndustry = 'medical';
-let scores = {}; // { "category::item": 'pass'|'flag'|'fail'|'na' }
+const STORAGE_KEY = "facility_audits_v1";
+function loadAudits(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||"[]")}catch{return[]}}
+function saveAudits(a){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(a))}catch{}}
 
-// ─── STORAGE ─────────────────────────────────────────────────────────────────
-function loadAudits() {
-  try { return JSON.parse(localStorage.getItem('sc_audits') || '[]'); }
-  catch { return []; }
-}
-function saveAudits(audits) {
-  try { localStorage.setItem('sc_audits', JSON.stringify(audits.slice(-50))); }
-  catch {}
+
+// ── STATE ──
+let state = {
+  tab: "bank",
+  scores: {},
+  client: "", loc: "", auditor: "", myco: "",
+  date: new Date().toISOString().split("T")[0],
+  cats: {},
+  audits: loadAudits(),
+  showHistory: false,
+  showResetConfirm: false,
+  savedFlash: false,
+  copyFlash: false
+};
+
+function getInd(){return industries.find(i=>i.id===state.tab)}
+function k(id){return state.tab+"_"+id}
+function setSc(id,v){state.scores[k(id)]=v;render()}
+function getSc(id){return state.scores[k(id)]||null}
+function toggleCat(n){state.cats[n]=(state.cats[n]===undefined?false:!state.cats[n]);render()}
+function isOpen(n){return state.cats[n]!==false}
+
+function calcStats(){
+  const ind=getInd();
+  const all=ind.categories.flatMap(c=>c.items);
+  const scored=all.filter(i=>{const s=getSc(i.id);return s&&s!=="na"});
+  const passed=scored.filter(i=>getSc(i.id)==="pass").length;
+  const flagged=scored.filter(i=>getSc(i.id)==="flag").length;
+  const failed=scored.filter(i=>getSc(i.id)==="fail").length;
+  const hiFails=all.filter(i=>i.risk==="HIGH"&&getSc(i.id)==="fail");
+  const pct=scored.length>0?Math.round((passed/scored.length)*100):null;
+  return{all,scored,passed,flagged,failed,hiFails,pct};
 }
 
-// ─── INIT ────────────────────────────────────────────────────────────────────
-function initApp() {
-  renderTabs();
-  renderChecklist();
-  renderHistory();
+function scoreColors(pct){
+  if(pct===null)return{col:"#374151",bg:"#f9fafb"};
+  if(pct>=90)return{col:"#166534",bg:"#dcfce7"};
+  if(pct>=70)return{col:"#92400e",bg:"#fef3c7"};
+  return{col:"#991b1b",bg:"#fee2e2"};
 }
 
-function renderTabs() {
-  const container = document.getElementById('industry-tabs');
-  container.innerHTML = '';
-  Object.entries(industries).forEach(([key, ind]) => {
-    const btn = document.createElement('button');
-    btn.className = 'tab-btn' + (key === currentIndustry ? ' active' : '');
-    btn.textContent = ind.name;
-    btn.onclick = () => switchIndustry(key);
-    container.appendChild(btn);
+
+// ── REPORT BUILDER (for email copy) ──
+function buildHtmlReport(){
+  const ind=getInd();
+  const {scored,passed,flagged,failed,hiFails,pct}=calcStats();
+  const {col:scCol,bg:scBg}=scoreColors(pct);
+
+  let catRows="";
+  ind.categories.forEach(cat=>{
+    const ci=cat.items.filter(i=>getSc(i.id));
+    if(!ci.length)return;
+    catRows+=`<tr><td colspan="3" style="background:#f3f4f6;padding:10px 14px;font-weight:700;font-size:13px;color:#111827;border-top:2px solid #e5e7eb;font-family:Georgia,serif;"><span style="display:inline-block;width:3px;height:14px;background:${ind.accent};border-radius:2px;margin-right:8px;vertical-align:middle;"></span>${cat.name}</td></tr>`;
+    ci.forEach(item=>{
+      const s=getSc(item.id);
+      const sc=scoreCfg[s];
+      const rk=riskCfg[item.risk];
+      catRows+=`<tr style="border-bottom:1px solid #f3f4f6;"><td style="padding:9px 14px;font-size:12px;color:#374151;font-family:Georgia,serif;">${item.label}</td><td style="padding:9px 6px;text-align:center;"><span style="background:${rk.bg};color:${rk.text};border:1px solid ${rk.border};padding:2px 7px;border-radius:20px;font-size:9px;font-weight:700;font-family:monospace;">${item.risk}</span></td><td style="padding:9px 14px;text-align:center;"><span style="background:${sc.bg};color:${sc.color};border:1px solid ${sc.border};padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;font-family:monospace;">${sc.label}</span></td></tr>`;
+    });
   });
-}
 
-function switchIndustry(key) {
-  currentIndustry = key;
-  scores = {};
-  renderTabs();
-  renderChecklist();
-  updateScore();
-}
+  let hifailRows="";
+  if(hiFails.length){
+    hifailRows=`<div style="background:#fff8f8;border:1px solid #fecaca;border-radius:6px;padding:14px 16px;margin:16px 0;"><div style="font-size:10px;color:#991b1b;font-family:monospace;letter-spacing:0.12em;margin-bottom:10px;">⚠ HIGH-RISK FAILURES — MOST LIKELY TO TRIGGER A WRITE-UP</div>${hiFails.map(i=>`<div style="font-size:12px;color:#7f1d1d;padding:5px 0;border-bottom:1px solid #fee2e2;"><span style="color:#ef4444;">✗</span> ${i.label}</div>`).join("")}</div>`;
+  }
 
-function renderChecklist() {
-  const container = document.getElementById('checklist');
-  container.innerHTML = '';
-  const industry = industries[currentIndustry];
-  Object.entries(industry.categories).forEach(([cat, items]) => {
-    const block = document.createElement('div');
-    block.className = 'category-block';
-    block.innerHTML = `
-      <div class="cat-header">
-        <span>${cat}</span>
-        <span class="cat-score-mini" id="cat-${slugify(cat)}">—</span>
-      </div>
-    `;
-    items.forEach((item, idx) => {
-      const key = `${cat}::${idx}`;
-      const row = document.createElement('div');
-      row.className = 'checklist-item';
-      row.innerHTML = `
-        <div class="item-label">${item.label}</div>
-        <span class="item-risk ${item.risk}">${item.risk}</span>
-        <div class="score-btns">
-          <button class="score-btn ${scores[key]==='pass'?'active-pass':''}" onclick="setScore('${escKey(key)}','pass')">PASS</button>
-          <button class="score-btn ${scores[key]==='flag'?'active-flag':''}" onclick="setScore('${escKey(key)}','flag')">FLAG</button>
-          <button class="score-btn ${scores[key]==='fail'?'active-fail':''}" onclick="setScore('${escKey(key)}','fail')">FAIL</button>
-          <button class="score-btn ${scores[key]==='na'?'active-na':''}" onclick="setScore('${escKey(key)}','na')">N/A</button>
+  const scoreSection=pct!==null?`
+    <div style="padding:20px 24px;border-bottom:1px solid #e5e7eb;">
+      <table style="width:100%;border-collapse:collapse;text-align:center;">
+        <tr>${[
+          {label:"Audited",val:scored.length,color:"#374151",bg:"#f9fafb"},
+          {label:"Passed",val:passed,color:"#166534",bg:"#dcfce7"},
+          {label:"Flagged",val:flagged,color:"#92400e",bg:"#fef3c7"},
+          {label:"Failed",val:failed,color:"#991b1b",bg:"#fee2e2"},
+          {label:"Score",val:pct+"%",color:scCol,bg:scBg}
+        ].map(({label,val,color,bg})=>`<td style="padding:0 4px;"><div style="background:${bg};border-radius:6px;padding:12px 6px;"><div style="font-size:22px;font-weight:800;color:${color};">${val}</div><div style="font-size:9px;color:${color};font-family:monospace;opacity:0.8;margin-top:4px;">${label.toUpperCase()}</div></div></td>`).join("")}
+        </tr>
+      </table>
+    </div>`:"";
+
+  return `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#f8f7f4;font-family:Georgia,serif;">
+<div style="max-width:700px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+  <div style="background:#fff;border-bottom:2px solid #e5e7eb;padding:20px 24px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:14px;">
+        <img src="${LOGO_SRC}" width="44" height="44" style="object-fit:contain;" alt="Sarasota Cleaning"/>
+        <div>
+          <div style="font-size:10px;letter-spacing:0.2em;color:#9ca3af;text-transform:uppercase;font-family:monospace;">Professional Cleaning Compliance</div>
+          <div style="font-size:20px;font-weight:700;color:#111827;margin-top:2px;">Facility Audit Scorecard</div>
+          <div style="font-size:12px;color:${ind.accent};font-family:monospace;margin-top:2px;">${ind.icon} ${ind.label}</div>
         </div>
-      `;
-      block.appendChild(row);
-    });
-    container.appendChild(block);
-  });
-}
-
-function escKey(k) { return k.replace(/'/g, "\\'"); }
-function slugify(s) { return s.replace(/[^a-z0-9]/gi, '_').toLowerCase(); }
-
-function setScore(key, val) {
-  scores[key] = val;
-  // Re-render buttons for this item
-  const industry = industries[currentIndustry];
-  const allItems = [];
-  Object.entries(industry.categories).forEach(([cat, items]) => {
-    items.forEach((_, idx) => allItems.push(`${cat}::${idx}`));
-  });
-  const itemIndex = allItems.indexOf(key);
-  const allRows = document.querySelectorAll('.checklist-item');
-  if (allRows[itemIndex]) {
-    const btns = allRows[itemIndex].querySelectorAll('.score-btn');
-    btns.forEach((btn, i) => {
-      const states = ['pass','flag','fail','na'];
-      btn.className = 'score-btn' + (scores[key] === states[i] ? ` active-${states[i]}` : '');
-    });
-  }
-  updateScore();
-}
-
-function updateScore() {
-  const industry = industries[currentIndustry];
-  let totalPass = 0, totalFlag = 0, totalFail = 0, totalNA = 0;
-  let highRiskFails = [];
-
-  Object.entries(industry.categories).forEach(([cat, items]) => {
-    let catPass = 0, catFail = 0, catFlag = 0, catNA = 0;
-    items.forEach((item, idx) => {
-      const key = `${cat}::${idx}`;
-      const s = scores[key];
-      if (s === 'pass') { catPass++; totalPass++; }
-      else if (s === 'flag') { catFlag++; totalFlag++; }
-      else if (s === 'fail') {
-        catFail++; totalFail++;
-        if (item.risk === 'HIGH') highRiskFails.push(item.label);
-      }
-      else if (s === 'na') { catNA++; totalNA++; }
-    });
-    const catScored = catPass + catFlag + catFail;
-    const catEl = document.getElementById('cat-' + slugify(cat));
-    if (catEl) {
-      catEl.textContent = catScored > 0 ? `${catPass}/${catScored} pass` : '—';
-    }
-  });
-
-  const scored = totalPass + totalFlag + totalFail;
-  const pct = scored > 0 ? Math.round((totalPass / scored) * 100) : null;
-
-  const pctEl = document.getElementById('score-pct');
-  const fillEl = document.getElementById('progress-fill');
-  const labelEl = document.getElementById('score-label');
-
-  if (pct === null) {
-    pctEl.textContent = '—%';
-    pctEl.className = 'score-pct';
-    fillEl.style.width = '0%';
-    fillEl.className = 'progress-fill';
-    labelEl.textContent = 'No items scored yet';
-  } else {
-    pctEl.textContent = pct + '%';
-    const cls = pct >= 90 ? 'pass' : pct >= 70 ? 'warn' : 'fail';
-    pctEl.className = `score-pct ${cls}`;
-    fillEl.style.width = pct + '%';
-    fillEl.className = `progress-fill ${cls}`;
-    labelEl.textContent = `${scored} of ${scored + totalNA} items scored`;
-  }
-
-  document.getElementById('pill-pass').textContent = `${totalPass} Pass`;
-  document.getElementById('pill-flag').textContent = `${totalFlag} Flag`;
-  document.getElementById('pill-fail').textContent = `${totalFail} Fail`;
-  document.getElementById('pill-na').textContent = `${totalNA} N/A`;
-
-  const alert = document.getElementById('risk-alert');
-  if (highRiskFails.length > 0) {
-    alert.style.display = 'block';
-    alert.innerHTML = `<strong>⚠ ${highRiskFails.length} HIGH-RISK FAILURE${highRiskFails.length > 1 ? 'S' : ''}</strong>: ${highRiskFails.join(' · ')}`;
-  } else {
-    alert.style.display = 'none';
-  }
-}
-
-// ─── SAVE / HISTORY ──────────────────────────────────────────────────────────
-function saveAudit() {
-  const client = document.getElementById('f-client').value.trim();
-  const location = document.getElementById('f-location').value.trim();
-  const auditor = document.getElementById('f-auditor').value.trim();
-
-  const scored = Object.values(scores).filter(v => v !== 'na').length;
-  if (scored === 0) { showToast('Score at least one item before saving.'); return; }
-
-  const industry = industries[currentIndustry];
-  const totalPass = Object.values(scores).filter(v => v === 'pass').length;
-  const pct = Math.round((totalPass / scored) * 100);
-
-  const audit = {
-    id: Date.now(),
-    date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-    industry: currentIndustry,
-    industryName: industry.name,
-    client, location, auditor,
-    scores: { ...scores },
-    pct
-  };
-
-  const audits = loadAudits();
-  audits.push(audit);
-  saveAudits(audits);
-  renderHistory();
-  showToast('Audit saved ✓');
-}
-
-function renderHistory() {
-  const audits = loadAudits().reverse();
-  const container = document.getElementById('history-list');
-  if (audits.length === 0) {
-    container.innerHTML = '<div class="empty-state">No saved audits yet. Complete and save an audit above.</div>';
-    return;
-  }
-  container.innerHTML = '';
-  audits.forEach(audit => {
-    const item = document.createElement('div');
-    item.className = 'history-item';
-    const cls = audit.pct >= 90 ? 'pass' : audit.pct >= 70 ? 'warn' : 'fail';
-    const colors = { pass: 'var(--pass)', warn: 'var(--warn)', fail: 'var(--danger)' };
-    item.innerHTML = `
-      <div class="history-meta">
-        <div class="history-name">${audit.client || 'Unnamed Client'} — ${audit.industryName}</div>
-        <div class="history-sub">${audit.date} · ${audit.location || 'No location'} · ${audit.auditor || 'No auditor'}</div>
       </div>
-      <div class="history-score" style="color:${colors[cls]}">${audit.pct}%</div>
-      <button class="history-del" onclick="deleteAudit(${audit.id}, event)" title="Delete">×</button>
-    `;
-    item.addEventListener('click', () => loadAudit(audit));
-    container.appendChild(item);
-  });
+      ${pct!==null?`<div style="text-align:center;background:${scBg};border:1px solid ${scCol}44;border-radius:10px;padding:10px 20px;"><div style="font-size:32px;font-weight:800;color:${scCol};line-height:1;">${pct}%</div><div style="font-size:9px;color:${scCol};letter-spacing:0.15em;font-family:monospace;margin-top:2px;">COMPLIANCE</div></div>`:""}
+    </div>
+  </div>
+  <div style="padding:20px 24px;background:#fafafa;border-bottom:1px solid #e5e7eb;">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <tr><td style="padding:4px 12px 4px 0;color:#6b7280;font-family:monospace;width:110px;">CLIENT</td><td style="padding:4px 0;color:#111827;font-weight:600;">${state.client||"—"}</td><td style="padding:4px 12px 4px 20px;color:#6b7280;font-family:monospace;width:110px;">LOCATION</td><td style="padding:4px 0;color:#111827;font-weight:600;">${state.loc||"—"}</td></tr>
+      <tr><td style="padding:4px 12px 4px 0;color:#6b7280;font-family:monospace;">AUDITOR</td><td style="padding:4px 0;color:#111827;font-weight:600;">${state.auditor||"—"}</td><td style="padding:4px 12px 4px 20px;color:#6b7280;font-family:monospace;">COMPANY</td><td style="padding:4px 0;color:#111827;font-weight:600;">${state.myco||"—"}</td></tr>
+      <tr><td style="padding:4px 12px 4px 0;color:#6b7280;font-family:monospace;">DATE</td><td style="padding:4px 0;color:#111827;font-weight:600;" colspan="3">${state.date}</td></tr>
+    </table>
+  </div>
+  ${scoreSection}
+  ${hifailRows?`<div style="padding:0 24px;">${hifailRows}</div>`:""}
+  <div style="padding:0 24px 20px;">
+    <table style="width:100%;border-collapse:collapse;margin-top:16px;">
+      <thead><tr style="background:#f9fafb;border-bottom:2px solid #e5e7eb;"><th style="padding:8px 14px;text-align:left;font-size:10px;color:#9ca3af;font-family:monospace;letter-spacing:0.1em;">ITEM</th><th style="padding:8px 6px;text-align:center;font-size:10px;color:#9ca3af;font-family:monospace;letter-spacing:0.1em;">RISK</th><th style="padding:8px 14px;text-align:center;font-size:10px;color:#9ca3af;font-family:monospace;letter-spacing:0.1em;">RESULT</th></tr></thead>
+      <tbody>${catRows}</tbody>
+    </table>
+  </div>
+  <div style="padding:16px 24px;background:#f9fafb;border-top:1px solid #e5e7eb;">
+    <div style="font-size:11px;color:#6b7280;font-style:italic;margin-bottom:10px;">Prepared by ${state.auditor||"a professional cleaning compliance specialist"} · ${state.myco||"Sarasota Cleaning"} · ${state.date}. Results reflect observable conditions at time of audit.</div>
+    <div style="padding:10px 14px;background:#fff;border-left:3px solid ${ind.accent};border-radius:0 6px 6px 0;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;">
+      <div><span style="font-size:13px;font-weight:700;color:#1a1a1a;font-family:monospace;letter-spacing:0.05em;">SentinelClean™</span><span style="font-size:11px;color:#6b7280;margin-left:8px;">— Compliance-grade cleaning by Sarasota Cleaning</span></div>
+      <img src="${LOGO_SRC}" width="36" height="36" style="object-fit:contain;" alt=""/>
+    </div>
+    <div style="font-size:10px;color:#9ca3af;font-family:monospace;">© ${new Date().getFullYear()} Sarasota Cleaning. All rights reserved.</div>
+  </div>
+</div></body></html>`;
 }
 
-function loadAudit(audit) {
-  currentIndustry = audit.industry;
-  scores = { ...audit.scores };
-  document.getElementById('f-client').value = audit.client || '';
-  document.getElementById('f-location').value = audit.location || '';
-  document.getElementById('f-auditor').value = audit.auditor || '';
-  renderTabs();
-  renderChecklist();
-  updateScore();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-  showToast('Audit loaded ✓');
+
+// ── ACTIONS ──
+function handleSave(){
+  const {scored,passed,flagged,failed,pct}=calcStats();
+  if(!state.client&&!scored.length)return;
+  const ind=getInd();
+  const record={
+    id:Date.now(),savedAt:new Date().toLocaleString(),
+    industry:ind.label,industryIcon:ind.icon,
+    client:state.client,loc:state.loc,auditor:state.auditor,myco:state.myco,
+    date:state.date,scores:{...state.scores},
+    pct,passed,flagged,failed,total:scored.length
+  };
+  state.audits=[record,...state.audits].slice(0,50);
+  saveAudits(state.audits);
+  state.savedFlash=true;
+  render();
+  setTimeout(()=>{state.savedFlash=false;render()},2000);
 }
 
-function deleteAudit(id, e) {
-  e.stopPropagation();
-  const audits = loadAudits().filter(a => a.id !== id);
-  saveAudits(audits);
-  renderHistory();
+function handleLoad(record){
+  const ind2=industries.find(i=>i.label===record.industry);
+  state.tab=ind2?ind2.id:"bank";
+  state.client=record.client;state.loc=record.loc;
+  state.auditor=record.auditor;state.myco=record.myco;
+  state.date=record.date;state.scores=record.scores;
+  state.cats={};state.showHistory=false;
+  render();window.scrollTo({top:0,behavior:"smooth"});
 }
 
-// ─── RESET ───────────────────────────────────────────────────────────────────
-function resetAudit() {
-  if (!confirm('Clear all scores and start a new audit?')) return;
-  scores = {};
-  document.getElementById('f-client').value = '';
-  document.getElementById('f-location').value = '';
-  document.getElementById('f-auditor').value = '';
-  renderChecklist();
-  updateScore();
+function handleDeleteAudit(id){
+  state.audits=state.audits.filter(a=>a.id!==id);
+  saveAudits(state.audits);render();
 }
 
-// ─── EMAIL REPORT ─────────────────────────────────────────────────────────────
-function copyEmailReport() {
-  const client = document.getElementById('f-client').value.trim() || 'N/A';
-  const location = document.getElementById('f-location').value.trim() || 'N/A';
-  const auditor = document.getElementById('f-auditor').value.trim() || 'N/A';
-  const industry = industries[currentIndustry];
-  const date = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
-
-  const totalPass = Object.values(scores).filter(v => v === 'pass').length;
-  const totalFlag = Object.values(scores).filter(v => v === 'flag').length;
-  const totalFail = Object.values(scores).filter(v => v === 'fail').length;
-  const totalNA = Object.values(scores).filter(v => v === 'na').length;
-  const scored = totalPass + totalFlag + totalFail;
-  const pct = scored > 0 ? Math.round((totalPass / scored) * 100) : 0;
-  const status = pct >= 90 ? 'COMPLIANT' : pct >= 70 ? 'NEEDS ATTENTION' : 'NON-COMPLIANT';
-
-  let report = `SENTINELCLEAN — FACILITY AUDIT REPORT\n`;
-  report += `${'─'.repeat(44)}\n`;
-  report += `Date: ${date}\n`;
-  report += `Client: ${client}\n`;
-  report += `Location: ${location}\n`;
-  report += `Auditor: ${auditor}\n`;
-  report += `Industry: ${industry.name}\n\n`;
-  report += `OVERALL SCORE: ${pct}% — ${status}\n`;
-  report += `Pass: ${totalPass}  |  Flag: ${totalFlag}  |  Fail: ${totalFail}  |  N/A: ${totalNA}\n\n`;
-
-  Object.entries(industry.categories).forEach(([cat, items]) => {
-    report += `${cat.toUpperCase()}\n`;
-    items.forEach((item, idx) => {
-      const key = `${cat}::${idx}`;
-      const s = (scores[key] || '—').toUpperCase();
-      const risk = item.risk;
-      report += `  [${s.padEnd(4)}] ${item.label} (${risk})\n`;
-    });
-    report += '\n';
-  });
-
-  report += `─`.repeat(44) + '\n';
-  report += `Generated by SentinelClean Audit System\n`;
-  report += `scorecard.sarasotacleaning.com\n`;
-
-  navigator.clipboard.writeText(report)
-    .then(() => showToast('Report copied to clipboard ✓'))
-    .catch(() => showToast('Copy failed — try Print instead'));
+function handleReset(){
+  state.scores={};state.client="";state.loc="";
+  state.auditor="";state.myco="";
+  state.date=new Date().toISOString().split("T")[0];
+  state.cats={};state.showResetConfirm=false;
+  render();window.scrollTo({top:0,behavior:"smooth"});
 }
 
-// ─── TOAST ───────────────────────────────────────────────────────────────────
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
+function doPrint(){window.print()}
+
+async function doCopyHtml(){
+  const html=buildHtmlReport();
+  try{
+    await navigator.clipboard.write([new ClipboardItem({"text/html":new Blob([html],{type:"text/html"})})]);
+    state.copyFlash=true;render();
+    setTimeout(()=>{state.copyFlash=false;render()},2500);
+  }catch{
+    const w=window.open("","_blank");
+    w.document.write(html);w.document.close();
+  }
 }
+
+
+// ── RENDER ──
+function render(){
+  const ind=getInd();
+  const {all,scored,passed,flagged,failed,hiFails,pct}=calcStats();
+  const {col:scCol,bg:scBg}=scoreColors(pct);
+
+  const inp=`background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:8px 11px;color:#111827;font-size:13px;width:100%;outline:none;font-family:Georgia,serif;`;
+
+  // ─ Buttons (shared styles) ─
+  const btnPrimary=`background:#1f2937;color:#fff;border:none;border-radius:7px;padding:10px 18px;font-size:12px;cursor:pointer;font-family:monospace;font-weight:700;`;
+  const btnAccent=`background:${state.copyFlash?"#166534":ind.accent};color:#fff;border:none;border-radius:7px;padding:10px 18px;font-size:12px;cursor:pointer;font-family:monospace;font-weight:700;transition:background 0.2s;`;
+  const btnSave=`background:${state.savedFlash?"#166534":"#f0fdf4"};color:${state.savedFlash?"#fff":"#166534"};border:1px solid #86efac;border-radius:7px;padding:10px 18px;font-size:12px;cursor:pointer;font-family:monospace;font-weight:700;transition:all 0.2s;`;
+  const btnReset=`background:#fff5f5;color:#991b1b;border:1px solid #fecaca;border-radius:7px;padding:10px 18px;font-size:12px;cursor:pointer;font-family:monospace;font-weight:700;`;
+
+  const actionBar=`
+    <div class="no-print" style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;align-items:center;">
+      <button style="${btnPrimary}" onclick="doPrint()">🖨 Print / PDF</button>
+      <button style="${btnAccent}" onclick="doCopyHtml()">${state.copyFlash?"✓ Copied! Paste into email":"✉ Copy for Email"}</button>
+      <button style="${btnSave}" onclick="handleSave()">${state.savedFlash?"✓ Saved!":"💾 Save Audit"}</button>
+      <button style="${btnReset}" onclick="state.showResetConfirm=true;render()">↺ New Audit</button>
+      ${scored.length>0?`<div style="margin-left:auto;display:flex;gap:14px;font-size:12px;font-family:monospace;"><span style="color:#166534;">✓ ${passed}</span><span style="color:#92400e;">⚑ ${flagged}</span><span style="color:#991b1b;">✗ ${failed}</span></div>`:""}
+    </div>`;
+
+  const resetConfirm=state.showResetConfirm?`
+    <div class="no-print" style="background:#fff8f8;border:1px solid #fecaca;border-radius:8px;padding:16px 18px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <div style="font-size:14px;color:#991b1b;font-weight:700;">Clear this scorecard and start fresh?</div>
+      <div style="display:flex;gap:8px;">
+        <button style="background:#166534;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:12px;cursor:pointer;font-family:monospace;font-weight:700;" onclick="handleSave();handleReset()">Save first, then reset</button>
+        <button style="background:#991b1b;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:12px;cursor:pointer;font-family:monospace;font-weight:700;" onclick="handleReset()">Reset without saving</button>
+        <button style="background:#f3f4f6;color:#374151;border:1px solid #e5e7eb;border-radius:6px;padding:8px 16px;font-size:12px;cursor:pointer;font-family:monospace;" onclick="state.showResetConfirm=false;render()">Cancel</button>
+      </div>
+    </div>`:"";
+
+  // ─ Tabs ─
+  const tabs=industries.map(i=>{
+    const active=state.tab===i.id;
+    return `<button onclick="state.tab='${i.id}';state.cats={};render()" style="background:${active?i.accent:"transparent"};color:${active?"#fff":"#6b7280"};border:none;padding:9px 13px;border-radius:6px 6px 0 0;cursor:pointer;font-size:12px;font-weight:${active?700:400};white-space:nowrap;transition:all 0.15s;font-family:monospace;">${i.icon} ${i.label}</button>`;
+  }).join("");
+
+  // ─ History panel ─
+  const historyPanel=state.showHistory?`
+    <div class="no-print" style="background:#1f2937;color:#f9fafb;padding:20px;border-bottom:2px solid #374151;">
+      <div style="max-width:920px;margin:0 auto;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+          <div style="font-size:13px;font-family:monospace;font-weight:700;letter-spacing:0.1em;">SAVED AUDITS</div>
+          <button onclick="state.showHistory=false;render()" style="background:transparent;color:#9ca3af;border:none;font-size:20px;cursor:pointer;line-height:1;">×</button>
+        </div>
+        ${state.audits.length===0?`<div style="font-size:13px;color:#6b7280;font-family:monospace;">No saved audits yet. Complete a scorecard and click "Save Audit".</div>`:`
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;">
+          ${state.audits.map(a=>{
+            const aCol=a.pct===null?"#9ca3af":a.pct>=90?"#4ade80":a.pct>=70?"#fbbf24":"#f87171";
+            return `<div style="background:#374151;border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:8px;">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                <div>
+                  <div style="font-size:13px;font-weight:700;color:#f9fafb;">${a.industryIcon} ${a.client||"Unnamed client"}</div>
+                  <div style="font-size:11px;color:#9ca3af;margin-top:2px;">${a.loc||"No location"} · ${a.date}</div>
+                  <div style="font-size:11px;color:#6b7280;margin-top:1px;">${a.industry}</div>
+                </div>
+                ${a.pct!==null?`<div style="font-size:20px;font-weight:800;color:${aCol};">${a.pct}%</div>`:""}
+              </div>
+              ${a.total>0?`<div style="font-size:10px;color:#9ca3af;font-family:monospace;">${a.passed}✓ ${a.flagged}⚑ ${a.failed}✗ of ${a.total} items</div>`:""}
+              <div style="display:flex;gap:6px;">
+                <button onclick="handleLoad(state.audits.find(x=>x.id===${a.id}))" style="flex:1;background:#4ade8022;color:#4ade80;border:1px solid #4ade8044;border-radius:5px;padding:6px;font-size:11px;cursor:pointer;font-family:monospace;font-weight:700;">Load</button>
+                <button onclick="handleDeleteAudit(${a.id})" style="background:#f8717122;color:#f87171;border:1px solid #f8717144;border-radius:5px;padding:6px 10px;font-size:11px;cursor:pointer;font-family:monospace;">Delete</button>
+              </div>
+            </div>`;
+          }).join("")}
+        </div>`}
+      </div>
+    </div>`:"";
+
+  // ─ Audit details form ─
+  const fields=[
+    {label:"CLIENT / BUSINESS",val:state.client,key:"client",ph:"e.g. Bayshore Bank"},
+    {label:"LOCATION / BRANCH",val:state.loc,key:"loc",ph:"e.g. Sarasota, FL"},
+    {label:"AUDITOR NAME",val:state.auditor,key:"auditor",ph:"Your full name"},
+    {label:"YOUR COMPANY",val:state.myco,key:"myco",ph:"Your cleaning co."},
+  ];
+  const detailForm=`
+    <div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:18px;margin-bottom:18px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+      <div style="font-size:10px;color:#9ca3af;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:14px;font-family:monospace;">Audit Details</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;">
+        ${fields.map(f=>`<div><div style="font-size:10px;color:#6b7280;margin-bottom:5px;font-family:monospace;letter-spacing:0.08em;">${f.label}</div><input type="text" value="${f.val.replace(/"/g,"&quot;")}" placeholder="${f.ph}" style="${inp}" oninput="state.${f.key}=this.value"/></div>`).join("")}
+        <div><div style="font-size:10px;color:#6b7280;margin-bottom:5px;font-family:monospace;letter-spacing:0.08em;">AUDIT DATE</div><input type="date" value="${state.date}" style="${inp}" onchange="state.date=this.value"/></div>
+      </div>
+    </div>`;
+
+  // ─ Legend ─
+  const legend=`
+    <div class="no-print" style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center;font-size:11px;color:#9ca3af;font-family:monospace;">
+      <span>SCORE →</span>
+      ${Object.entries(scoreCfg).map(([k2,{label,color,bg,border}])=>`<span style="background:${bg};color:${color};border:1px solid ${border};padding:2px 8px;border-radius:20px;font-weight:700;font-size:10px;">${label}</span>`).join("")}
+      <span style="margin-left:6px;">RISK →</span>
+      ${Object.entries(riskCfg).map(([r,{bg,text,border}])=>`<span style="background:${bg};color:${text};border:1px solid ${border};padding:2px 8px;border-radius:20px;font-weight:700;font-size:10px;">${r}</span>`).join("")}
+    </div>`;
+
+
+  // ─ Categories ─
+  const cats=ind.categories.map(cat=>{
+    const items=cat.items;
+    const cs=items.filter(i=>{const s=getSc(i.id);return s&&s!=="na"});
+    const cp=cs.filter(i=>getSc(i.id)==="pass").length;
+    const cf=cs.filter(i=>getSc(i.id)==="fail").length;
+    const cfl=cs.filter(i=>getSc(i.id)==="flag").length;
+    const exp=isOpen(cat.name);
+    const catKey=cat.name.replace(/[^a-z0-9]/gi,"_");
+
+    const rows=exp?items.map((item,idx)=>{
+      const cur=getSc(item.id);
+      const risk=riskCfg[item.risk];
+      const cfg=cur?scoreCfg[cur]:null;
+      const rowBg=cur==="fail"?"#fff8f8":cur==="pass"?"#f8fff8":cur==="flag"?"#fffdf0":"#fff";
+      const btns=Object.entries(scoreCfg).map(([k2,{label,color,bg,border}])=>
+        `<button onclick="setSc('${item.id}','${k2}')" style="background:${cur===k2?bg:"#f9fafb"};color:${cur===k2?color:"#9ca3af"};border:${cur===k2?`1px solid ${border}`:"1px solid #e5e7eb"};border-radius:5px;padding:5px 9px;font-size:10px;cursor:pointer;font-family:monospace;font-weight:700;transition:all 0.1s;">${label}</button>`
+      ).join("");
+      return `<div style="padding:10px 18px;border-bottom:${idx<items.length-1?"1px solid #f9fafb":"none"};display:flex;align-items:center;gap:10px;background:${rowBg};">
+        <div style="width:3px;align-self:stretch;border-radius:2px;flex-shrink:0;background:${cfg?cfg.color:"#e5e7eb"};opacity:${cfg?1:0.3};"></div>
+        <div style="flex:1;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-size:13px;color:#374151;line-height:1.5;">${item.label}</span>
+          <span style="font-size:9px;font-weight:700;letter-spacing:0.08em;background:${risk.bg};color:${risk.text};border:1px solid ${risk.border};padding:1px 6px;border-radius:20px;font-family:monospace;">${item.risk}</span>
+        </div>
+        <div style="display:flex;gap:4px;flex-shrink:0;">${btns}</div>
+      </div>`;
+    }).join(""):"";
+
+    return `<div style="background:#fff;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+      <div onclick="toggleCat('${cat.name.replace(/'/g,"\\'")}')" style="padding:12px 18px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:${exp?"#fafafa":"#fff"};border-bottom:${exp?"1px solid #f3f4f6":"none"};">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:3px;height:16px;border-radius:2px;background:${ind.accent};"></div>
+          <span style="font-size:14px;font-weight:700;color:#111827;">${cat.name}</span>
+          <span style="font-size:10px;color:#d1d5db;font-family:monospace;">${items.length} items</span>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          ${cf>0?`<span style="font-size:10px;background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:20px;font-family:monospace;">${cf} FAIL</span>`:""}
+          ${cfl>0?`<span style="font-size:10px;background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:20px;font-family:monospace;">${cfl} FLAG</span>`:""}
+          ${cp>0?`<span style="font-size:10px;background:#dcfce7;color:#166534;padding:2px 8px;border-radius:20px;font-family:monospace;">${cp} PASS</span>`:""}
+          <span style="color:#d1d5db;font-size:14px;">${exp?"▲":"▼"}</span>
+        </div>
+      </div>
+      ${rows}
+    </div>`;
+  }).join("");
+
+
+  // ─ Summary block ─
+  const summaryBlock=scored.length>0?`
+    <div style="background:#fff;border:2px solid ${scCol}33;border-top:3px solid ${scCol};border-radius:8px;padding:22px;margin-top:20px;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
+      <div style="font-size:10px;color:#9ca3af;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:16px;font-family:monospace;">Audit Summary</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:10px;margin-bottom:18px;">
+        ${[
+          {label:"Audited",val:scored.length,color:"#374151",bg:"#f9fafb"},
+          {label:"Passed",val:passed,color:"#166534",bg:"#dcfce7"},
+          {label:"Flagged",val:flagged,color:"#92400e",bg:"#fef3c7"},
+          {label:"Failed",val:failed,color:"#991b1b",bg:"#fee2e2"},
+          {label:"Score",val:pct+"%",color:scCol,bg:scBg}
+        ].map(({label,val,color,bg})=>`<div style="text-align:center;background:${bg};border:1px solid ${color}22;border-radius:8px;padding:12px 6px;"><div style="font-size:24px;font-weight:800;color:${color};line-height:1;">${val}</div><div style="font-size:9px;color:${color};letter-spacing:0.1em;margin-top:5px;font-family:monospace;opacity:0.7;">${label.toUpperCase()}</div></div>`).join("")}
+      </div>
+      ${hiFails.length>0?`
+      <div style="background:#fff8f8;border:1px solid #fecaca;border-radius:6px;padding:14px 16px;margin-bottom:16px;">
+        <div style="font-size:10px;color:#991b1b;font-family:monospace;letter-spacing:0.15em;margin-bottom:10px;">⚠ HIGH-RISK FAILURES — MOST LIKELY TO TRIGGER A WRITE-UP</div>
+        ${hiFails.map(item=>`<div style="font-size:13px;color:#7f1d1d;padding:5px 0;border-bottom:1px solid #fee2e2;display:flex;align-items:center;gap:8px;"><span style="color:#ef4444;font-size:11px;">✗</span> ${item.label}</div>`).join("")}
+      </div>`:""}
+      <div style="padding:12px 14px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;font-size:12px;color:#6b7280;line-height:1.9;">
+        <strong style="color:#374151;">Auditor:</strong> ${state.auditor||"—"} &nbsp;·&nbsp;
+        <strong style="color:#374151;">Company:</strong> ${state.myco||"—"} &nbsp;·&nbsp;
+        <strong style="color:#374151;">Client:</strong> ${state.client||"—"} &nbsp;·&nbsp;
+        <strong style="color:#374151;">Location:</strong> ${state.loc||"—"} &nbsp;·&nbsp;
+        <strong style="color:#374151;">Date:</strong> ${state.date}
+      </div>
+      <div style="margin-top:10px;font-size:11px;color:#9ca3af;font-style:italic;font-family:monospace;">
+        Prepared by a professional cleaning compliance specialist. Results reflect observable conditions at time of audit.
+      </div>
+      <div style="margin-top:12px;padding:10px 14px;background:#f9fafb;border:1px solid ${ind.accent}33;border-left:3px solid ${ind.accent};border-radius:0 6px 6px 0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <img src="${LOGO_SRC}" width="32" height="32" style="object-fit:contain;" alt=""/>
+          <div>
+            <span style="font-size:12px;font-weight:700;color:#1a1a1a;font-family:monospace;letter-spacing:0.05em;">SentinelClean™</span>
+            <span style="font-size:11px;color:#6b7280;margin-left:8px;">— Compliance-grade cleaning by Sarasota Cleaning</span>
+          </div>
+        </div>
+        <div style="font-size:10px;color:#9ca3af;font-family:monospace;">© ${new Date().getFullYear()} Sarasota Cleaning. All rights reserved.</div>
+      </div>
+      <div class="no-print" style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
+        <button style="${btnPrimary}" onclick="doPrint()">🖨 Print / PDF</button>
+        <button style="${btnAccent}" onclick="doCopyHtml()">${state.copyFlash?"✓ Copied! Paste into email":"✉ Copy for Email"}</button>
+        <button style="${btnSave}" onclick="handleSave()">${state.savedFlash?"✓ Saved!":"💾 Save Audit"}</button>
+        <button style="${btnReset}" onclick="state.showResetConfirm=true;render()">↺ New Audit</button>
+      </div>
+    </div>`:"";
+
+
+  // ─ Assemble full HTML ─
+  document.getElementById("app").innerHTML = `
+    <!-- HEADER -->
+    <div class="no-print" style="background:#fff;border-bottom:2px solid #e5e7eb;padding:22px 20px 0;">
+      <div style="max-width:920px;margin:0 auto;">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;">
+          <div style="width:44px;height:44px;border-radius:8px;background:${ind.accent}18;border:2px solid ${ind.accent}44;display:flex;align-items:center;justify-content:center;font-size:20px;">${ind.icon}</div>
+          <div style="flex:1;">
+            <div style="font-size:10px;letter-spacing:0.25em;color:#9ca3af;text-transform:uppercase;margin-bottom:2px;font-family:monospace;">Professional Cleaning Compliance</div>
+            <h1 style="margin:0;font-size:clamp(17px,3vw,24px);font-weight:700;color:#111827;">Facility Audit Scorecard</h1>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;border-left:1px solid #e5e7eb;padding-left:16px;">
+            <img src="${LOGO_SRC}" alt="Sarasota Cleaning" style="width:42px;height:42px;object-fit:contain;"/>
+            <div style="line-height:1.3;">
+              <div style="font-size:13px;font-weight:700;color:#1a1a1a;letter-spacing:0.01em;">Sarasota Cleaning</div>
+              <div style="font-size:10px;color:${ind.accent};font-family:monospace;letter-spacing:0.08em;font-weight:700;">SentinelClean™</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            ${pct!==null?`<div style="text-align:center;background:${scBg};border:1px solid ${scCol}44;border-radius:10px;padding:8px 16px;"><div style="font-size:26px;font-weight:800;color:${scCol};line-height:1;">${pct}%</div><div style="font-size:9px;color:${scCol};letter-spacing:0.15em;margin-top:2px;font-family:monospace;">COMPLIANCE</div></div>`:""}
+            <button onclick="state.showHistory=!state.showHistory;render()" style="background:${state.showHistory?"#1f2937":"#f3f4f6"};color:${state.showHistory?"#fff":"#374151"};border:1px solid #e5e7eb;border-radius:8px;padding:8px 14px;font-size:12px;cursor:pointer;font-family:monospace;font-weight:700;">📋 History ${state.audits.length>0?"("+state.audits.length+")":""}</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:2px;overflow-x:auto;">${tabs}</div>
+      </div>
+    </div>
+
+    <!-- HISTORY PANEL -->
+    ${historyPanel}
+
+    <!-- BODY -->
+    <div style="max-width:920px;margin:0 auto;padding:20px 16px 80px;">
+
+      <!-- Context box -->
+      <div style="border-left:4px solid ${ind.accent};background:#fff;border-radius:0 8px 8px 0;padding:14px 18px;margin-bottom:18px;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+        <div style="font-size:10px;color:${ind.accent};letter-spacing:0.2em;text-transform:uppercase;margin-bottom:5px;font-family:monospace;">Industry Context</div>
+        <p style="margin:0;font-size:13px;color:#4b5563;line-height:1.65;">${ind.intro}</p>
+      </div>
+
+      <!-- Audit details -->
+      ${detailForm}
+
+      <!-- Action bar -->
+      ${actionBar}
+
+      <!-- Reset confirm -->
+      ${resetConfirm}
+
+      <!-- Legend -->
+      ${legend}
+
+      <!-- Categories -->
+      ${cats}
+
+      <!-- Summary -->
+      ${summaryBlock}
+
+    </div>
+  `;
+}
+
+// ── INIT ──
+render();
+
 </script>
 </body>
 </html>
